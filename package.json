@@ -4,7 +4,7 @@
   "description": "Push latest 超異域公主連結！Re:Dive news to Telegram channel",
   "main": "index.ts",
   "scripts": {
-    "test": "nodemon index.ts"
+    "start": "nodemon index.ts"
   },
   "repository": {
     "type": "git",
@@ -27,5 +27,7 @@
     "nodemon": "^2.0.4",
     "typescript": "^3.9.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "telegraf": "^3.38.0"
+  }
 }
