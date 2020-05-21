@@ -9,7 +9,7 @@ async function publishLatestArticle(api = API_SERVER): Promise<number> {
     const telegraph = new Telegraph();
     const state = await getLatestState(api);
     const latestArt = state['latest_announce_id'] as number;
-    const announceResult = await redive.getAnnounceData();
+    const announceResult = await redive.getLatestArticle();
 
     const newArts = announceResult.slice(undefined, announceResult.indexOf(latestArt));
     for (const id of newArts) {

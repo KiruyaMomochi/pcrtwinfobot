@@ -30,7 +30,7 @@ export class Redive {
         return this.server + path;
     }
 
-    getAnnounceData(offset = 0): Promise<Array<number>> {
+    getLatestArticle(offset = 0): Promise<Array<number>> {
         return axios.get(this.joinUrl(Redive.ajax_announce), {
             params: { offset: offset },
             headers: this.headers
@@ -61,11 +61,11 @@ export class Redive {
     async getAllArticles(): Promise<Array<number>> {
         let ids: Array<number> = [];
         let offset = 0;
-        let data = await this.getAnnounceData(offset);
+        let data = await this.getLatestArticle(offset);
         while (data.length) {
             ids = ids.concat(data);
             offset += 10;
-            data = await this.getAnnounceData(offset);
+            data = await this.getLatestArticle(offset);
         }
 
         return ids.reverse();
