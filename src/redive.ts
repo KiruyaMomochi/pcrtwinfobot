@@ -17,7 +17,7 @@ interface Thumbnail {
 }
 
 export class Redive {
-    static ajax_announce = '/information/ajax_announce';
+    static article_list = '/information/ajax_announce';
     static detail = '/information/detail/';
 
     constructor(
@@ -31,7 +31,7 @@ export class Redive {
     }
 
     getLatestArticle(offset = 0): Promise<Array<number>> {
-        return axios.get(this.joinUrl(Redive.ajax_announce), {
+        return axios.get(this.joinUrl(Redive.article_list), {
             params: { offset: offset },
             headers: this.headers
         })
