@@ -4,7 +4,7 @@ import { bot } from './src/bot';
 import { getLatestState, setLatestState } from './src/state';
 import { API_SERVER, CHANNEL } from './config.json';
 
-async function publishLatestArticle(api = API_SERVER) {
+async function publishLatestArticle(api = API_SERVER): Promise<number> {
     const redive = new Redive(api);
     const telegraph = new Telegraph();
     const state = await getLatestState(api);
@@ -27,7 +27,7 @@ async function publishLatestArticle(api = API_SERVER) {
     state['latest_announce_id'] = announceResult[0];
     setLatestState(state);
 
-    return state;
+    return announceResult[0];
 }
 
 setInterval(
