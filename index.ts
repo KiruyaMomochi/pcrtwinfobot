@@ -30,6 +30,9 @@ async function publishLatestArticle(api = API_SERVER): Promise<number> {
     return announceResult[0];
 }
 
-setInterval(
-    () => publishLatestArticle().then(console.log, console.log),
-    60 * 60 * 1000);
+function doPublishArticle(): void {
+    publishLatestArticle().then(console.log, console.log);
+}
+
+doPublishArticle();
+setInterval(doPublishArticle, 30 * 60 * 1000);
