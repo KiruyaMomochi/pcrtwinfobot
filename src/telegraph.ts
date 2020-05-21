@@ -1,82 +1,114 @@
 /* eslint-disable @typescript-eslint/camelcase */
 import axios from 'axios';
 import { stringify as qstringify } from 'querystring';
-import { NodeElement, NodeArray, TelegraphArticle, NodeObject } from 'typings';
+import { NodeElement, NodeArray, TelegraphArticle, NodeObject } from '../typings';
+import { TELEGRAPH_TOKEN } from '../config.json';
 
-export function domToNode(domNode: Element): NodeElement {
-    if (domNode.nodeType == domNode.TEXT_NODE) {
-        return (domNode as HTMLObjectElement).data;
+interface ExtraPage {
+    authorName?: string;
+    authorUrl?: string;
+    returnContent?: boolean;
+}
+
+export class Telegraph {
+    constructor(readonly token: string = TELEGRAPH_TOKEN) {
+
     }
-    if (domNode.nodeType != domNode.ELEMENT_NODE) {
-        return undefined;
-    }
 
-    const nodeElement: NodeObject = {
-        tag: domNode.tagName.toLowerCase(),
-        attrs: {},
-        children: []
-    };
+    createPage(
+        title: string,
+        content: string,
+        extra?: ExtraPage): Promise<TelegraphArticle> {
 
-    for (const attr of domNode.attributes) {
-        if (attr.name == 'href' || attr.name == 'src') {
-            if (!nodeElement.attrs) {
-                nodeElement.attrs = {};
+        const postData = {
+            access_token: this.token,
+            title: title,
+            content: content,
+            author_name: extra?.authorName,
+            author_url: extra?.authorUrl,
+            return_content: extra?.returnContent
+        };
+
+        return axios.post(
+            'https://api.telegra.ph/createPage',
+            qstringify(postData)
+        ).then((response) => {
+            const data = response.data;
+            if (data.ok) {
+                return data.result;
             }
-            nodeElement.attrs[attr.name] = attr.value;
-        }
+            else {
+                throw data.error;
+            }
+        });
     }
 
-    nodeElement.children = [];
 
-    domNode.childNodes.forEach((child) => {
-        const node = domToNode(child as Element);
-        node && nodeElement.children.push(node);
-    });
-
-    return nodeElement;
-}
-
-export function childrenToNodes(children: HTMLCollection): NodeArray {
-    let nodeArray: NodeArray = [];
-    for (const child of children) {
-        const node = domToNode(child);
-        if (node instanceof Object && 'children' in node) {
-            nodeArray = nodeArray.concat(node.children);
+    static domToNode(domNode: Element): NodeElement {
+        if (domNode.nodeType == domNode.TEXT_NODE) {
+            return (domNode as HTMLObjectElement).data;
         }
-        else if (node) {
-            nodeArray.push(node);
+        if (domNode.nodeType != domNode.ELEMENT_NODE) {
+            return undefined;
         }
+
+        const nodeElement: NodeObject = {
+            tag: domNode.tagName.toLowerCase(),
+            attrs: {},
+            children: []
+        };
+
+        for (const attr of domNode.attributes) {
+            if (attr.name == 'href' || attr.name == 'src') {
+                if (!nodeElement.attrs) {
+                    nodeElement.attrs = {};
+                }
+                nodeElement.attrs[attr.name] = attr.value;
+            }
+        }
+
+        nodeElement.children = [];
+
+        domNode.childNodes.forEach((child) => {
+            const node = Telegraph.domToNode(child as Element);
+            node && nodeElement.children.push(node);
+        });
+
+        return nodeElement;
     }
-    return nodeArray;
-}
 
-export function createTelegraphPage(
-    accessToken: string,
-    title: string,
-    content: string,
-    authorName?: string,
-    authorUrl?: string,
-    returnContent?: boolean): Promise<TelegraphArticle> {
+    static childrenToNodes(children: HTMLCollection): NodeArray {
+        let nodeArray: NodeArray = [];
+        for (const child of children) {
+            const node = Telegraph.domToNode(child);
+            if (node instanceof Object && 'children' in node) {
+                nodeArray = nodeArray.concat(node.children);
+            }
+            else if (node) {
+                nodeArray.push(node);
+            }
+        }
+        return nodeArray;
+    }
 
-    const postData = {
-        access_token: accessToken,
-        title: title,
-        content: content,
-        author_name: authorName,
-        author_url: authorUrl,
-        return_content: returnContent
-    };
+    uploadNodes(title: string, nodes: NodeArray, extra?: ExtraPage):
+        Promise<TelegraphArticle> {
+        return this.createPage(title, JSON.stringify(nodes), extra);
+    }
 
-    return axios.post(
-        'https://api.telegra.ph/createPage',
-        qstringify(postData)
-    ).then((response) => {
-        const data = response.data;
-        if (data.ok) {
-            return data.result;
+    uploadChildren(title: string, clooec: HTMLCollection, extra?: ExtraPage):
+        Promise<TelegraphArticle> {
+        return this.uploadNodes(title, Telegraph.childrenToNodes(clooec), extra);
+    }
+
+    uploadElement(title: string, element: Element, extra?: ExtraPage):
+        Promise<TelegraphArticle> {
+        const node = Telegraph.domToNode(element);
+        if (node) {
+            return this.uploadNodes(title, [node], extra);
         }
         else {
-            throw data.error;
+            throw 'The element doesn\'t have valid content';
         }
-    });
+    }
 }

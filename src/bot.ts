@@ -1,10 +1,10 @@
 import { Telegraf } from 'telegraf';
 import { Message } from 'telegraf/typings/telegram-types';
-import { uploadIdToTelegraph, getAllArticles } from 'information';
-import { MyContext } from 'typings';
-import { BOT_TOKEN, CHANNEL } from 'config';
+import { uploadIdToTelegraph, getAllArticles } from './information';
+import { MyContext } from '../typings';
+import { BOT_TOKEN, CHANNEL } from '../config.json';
 
-const bot = new Telegraf<MyContext>(BOT_TOKEN);
+export const bot = new Telegraf<MyContext>(BOT_TOKEN);
 
 async function sendArticleById(id: number): Promise<Message> {
     const url = await uploadIdToTelegraph(id);
