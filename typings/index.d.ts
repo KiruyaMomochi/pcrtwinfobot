@@ -23,6 +23,24 @@ interface NodeObject {
     children: NodeArray;
 }
 
+interface Article {
+    title: string;
+    content: HTMLCollection;
+}
+
+interface Cartoon {
+    id: number;
+    episode: number;
+    current_page_id: number;
+    page_set: number;
+    title: string;
+    thumbnail: string;
+}
+
+type CartoonList = Array<Cartoon>;
+type CartoonUrl = string;
+
+
 export class MyContext extends TelegrafContext {
     db: {
         sendArticleById: (id: number) => Promise<Message>;
