@@ -3,7 +3,6 @@ import { HEADERS, API_SERVER, DELAY } from '../config.json';
 import { JSDOM } from 'jsdom';
 import { sleep } from './utils';
 import { CartoonList, CartoonUrl, Article, Cartoon } from '../typings';
-import { off } from 'process';
 
 export class Redive {
     static article_list = '/information/ajax_announce';

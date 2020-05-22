@@ -4,7 +4,7 @@ import { Telegraph } from './telegraph';
 import Telegraf from 'telegraf';
 import { INFO_CHANNEL, CARTOON_CHANNEL, DELAY } from '../config.json';
 import { TelegrafContext } from 'telegraf/typings/context';
-import { Cartoon, CartoonList } from '../typings';
+import { Cartoon } from '../typings';
 
 export function sleep(ms: number): Promise<unknown> {
     return new Promise(resolve => setTimeout(resolve, ms));
