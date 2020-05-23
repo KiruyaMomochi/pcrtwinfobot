@@ -8,11 +8,21 @@ const redive = new Redive(API_SERVER);
 const telegraph = new Telegraph();
 
 function doPublishArticle(): void {
-    publishLatestArticle(bot, redive, telegraph).then(console.log, console.log);
+    publishLatestArticle(bot, redive, telegraph)
+        .then(console.log)
+        .catch((err) => {
+            console.log(err);
+            process.exit();
+        });
 }
 
 function doPublishCartoon(): void {
-    publishLatestCartoon(bot, redive).then(console.log, console.log);
+    publishLatestCartoon(bot, redive)
+        .then(console.log)
+        .catch((err) => {
+            console.log(err);
+            process.exit();
+        });
 }
 
 doPublishArticle();

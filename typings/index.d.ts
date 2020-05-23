@@ -50,8 +50,8 @@ interface Article {
 }
 
 interface Cartoon {
-    id: number;
-    episode: number;
+    id: string;
+    episode: string;
     current_page_id: number;
     page_set: number;
     title: string;

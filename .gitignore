@@ -118,3 +118,4 @@ dist
 # config
 config.json
 state.json
+states

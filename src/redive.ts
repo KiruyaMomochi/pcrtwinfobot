@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { HEADERS, API_SERVER, DELAY } from '../config.json';
+import { HEADERS, API_SERVER, API_DELAY, ARTICLE_DELAY, IMAGE_DELAY } from '../config.json';
 import { JSDOM } from 'jsdom';
 import { sleep } from './utils';
 import { CartoonList, CartoonUrl, Article, Cartoon } from '../typings';
@@ -13,7 +13,9 @@ export class Redive {
     constructor(
         readonly server = API_SERVER,
         readonly headers = HEADERS,
-        readonly delay = DELAY) {
+        readonly apiDelay = API_DELAY,
+        readonly articleSendDelay = ARTICLE_DELAY,
+        readonly imageSendDelay = IMAGE_DELAY) {
 
     }
 
@@ -54,7 +56,7 @@ export class Redive {
         let offset = 0;
         let data = await this.getLatestArticleIds(offset);
         while (data.length) {
-            await sleep(this.delay);
+            await sleep(this.apiDelay);
             ids = ids.concat(data);
             offset += 10;
             data = await this.getLatestArticleIds(offset);
@@ -77,6 +79,7 @@ export class Redive {
             cartoon.length != 0;
             page++, cartoon = await this.getLatestCartoons(page)) {
             yield* cartoon;
+            await sleep(this.apiDelay);
         }
     }
 
@@ -85,13 +88,17 @@ export class Redive {
         for (
             let article = await this.getLatestArticleIds(offset);
             article.length != 0;
-            offset += article.length, 
+            offset += article.length,
             article = await this.getLatestArticleIds(offset)) {
             yield* article;
+            await sleep(this.apiDelay);
         }
     }
 
-    async getCartoonsAfter(id: number, delay: number = DELAY): Promise<CartoonList> {
+    async getCartoonsAfter(id: string): Promise<CartoonList> {
+        if (id == undefined) {
+            throw 'ERROR: undefined id';
+        }
         const cartoonit = this.makeCartoonIterator();
         const result: CartoonList = [];
         for await (const cartoon of cartoonit) {
@@ -99,12 +106,14 @@ export class Redive {
                 break;
             }
             result.unshift(cartoon);
-            await sleep(delay);
         }
         return result;
     }
 
-    async getArticleIdsAfter(id: number, delay: number = DELAY): Promise<number[]> {
+    async getArticleIdsAfter(id: number): Promise<number[]> {
+        if (id == undefined) {
+            throw 'ERROR: undefined id';
+        }
         const articleit = this.makeArticleIdIterator();
         const result: number[] = [];
         for await (const article of articleit) {
@@ -112,7 +121,6 @@ export class Redive {
                 break;
             }
             result.unshift(article);
-            await sleep(delay);
         }
         return result;
     }
@@ -128,13 +136,13 @@ export class Redive {
         ) {
             cartoonList = cartoonList.concat(listInPage);
             console.log(cartoonList);
-            await sleep(this.delay);
+            await sleep(this.apiDelay);
         }
 
         return cartoonList.reverse();
     }
 
-    async getCartoonById(id: number): Promise<CartoonUrl> {
+    async getCartoonById(id: string): Promise<CartoonUrl> {
         const url = this.joinUrl(Redive.cartoon_datail + String(id));
         const response = await axios.get(url, { headers: this.headers });
 

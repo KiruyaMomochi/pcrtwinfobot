@@ -2,7 +2,7 @@ import { getLatestState, setLatestState } from './state';
 import { Redive } from './redive';
 import { Telegraph } from './telegraph';
 import Telegraf from 'telegraf';
-import { INFO_CHANNEL, CARTOON_CHANNEL, DELAY } from '../config.json';
+import { INFO_CHANNEL, CARTOON_CHANNEL, IMAGE_DELAY, ARTICLE_DELAY } from '../config.json';
 import { TelegrafContext } from 'telegraf/typings/context';
 import { Cartoon } from '../typings';
 
@@ -30,29 +30,24 @@ export async function publishArticleById(
 export async function publishLatestArticle(
     bot: Telegraf<TelegrafContext>,
     redive: Redive,
-    telegraph: Telegraph,
-    delay = DELAY
+    telegraph: Telegraph
 ): Promise<number> {
-    let state = await getLatestState(redive.server);
-    let latestArt = state['latest_announce_id'] as number;
-
-    const newArts = await redive.getArticleIdsAfter(latestArt, delay);
+    const latestArt = (await getLatestState(redive.server, 'latest_announce_id')) as number;
+    const newArts = await redive.getArticleIdsAfter(latestArt);
 
     for (const id of newArts) {
         await publishArticleById(id, bot, redive, telegraph);
+        await sleep(ARTICLE_DELAY);
     }
 
-    state = await getLatestState(redive.server);
-    latestArt = newArts[0] ?? state['latest_announce_id'];
-    state['latest_announce_id'] = latestArt;
-    setLatestState(state);
-
-    return latestArt;
+    const newLatestArticle = Number(newArts.pop()) || latestArt;
+    setLatestState(redive.server, 'latest_announce_id', newLatestArticle);
+    return newLatestArticle;
 }
 
 export async function publishCartoonById(
-    id: number,
-    episode: number,
+    id: string,
+    episode: string,
     title: string,
     bot: Telegraf<TelegrafContext>,
     redive: Redive
@@ -83,24 +78,20 @@ export async function publishCartoonByCartoon(
         redive
     );
 }
+
 export async function publishLatestCartoon(
     bot: Telegraf<TelegrafContext>,
-    redive: Redive,
-    delay = DELAY
-): Promise<number> {
-    let state = await getLatestState(redive.server);
-    let latestCartoonId = state['latest_cartoon_id'] as number;
-
-    const newCartoons = await redive.getCartoonsAfter(latestCartoonId, delay);
+    redive: Redive
+): Promise<string> {
+    const latestCartoonId = (await getLatestState(redive.server, 'latest_cartoon_id')) as string;
+    const newCartoons = await redive.getCartoonsAfter(latestCartoonId);
 
     for (const cartoon of newCartoons) {
         await publishCartoonByCartoon(cartoon, bot, redive);
+        await sleep(IMAGE_DELAY);
     }
-
-    state = await getLatestState(redive.server);
-    latestCartoonId = newCartoons[0]?.id ?? state['latest_cartoon_id'];
-    state['latest_cartoon_id'] = latestCartoonId;
-    setLatestState(state);
-
-    return latestCartoonId;
+    
+    const newLatestCartoonId = newCartoons.pop()?.id || latestCartoonId;
+    setLatestState(redive.server, 'latest_cartoon_id', newLatestCartoonId);
+    return newLatestCartoonId;
 }
