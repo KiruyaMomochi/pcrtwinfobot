@@ -2,9 +2,11 @@ import { getLatestState, setLatestState } from './state';
 import { Redive } from './redive';
 import { Telegraph } from './telegraph';
 import Telegraf from 'telegraf';
-import { INFO_CHANNEL, CARTOON_CHANNEL, IMAGE_DELAY, ARTICLE_DELAY } from '../config.json';
+import { INFO_CHANNEL, CARTOON_CHANNEL, STATUS_CHANNEL, IMAGE_DELAY, ARTICLE_DELAY } from '../config.json';
 import { TelegrafContext } from 'telegraf/typings/context';
 import { Cartoon } from '../typings';
+import { bot } from './bot';
+import { Message } from 'telegraf/typings/telegram-types';
 
 export function sleep(ms: number): Promise<unknown> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -43,6 +45,17 @@ export async function publishLatestArticle(
     const newLatestArticle = Number(newArts.pop()) || latestArt;
     setLatestState(redive.server, 'latest_announce_id', newLatestArticle);
     return newLatestArticle;
+}
+
+export function sendStatus(message: string, statusChannel = STATUS_CHANNEL): Promise<Message> {
+    return bot.telegram.sendMessage(
+        statusChannel,
+        message,
+        {
+            // eslint-disable-next-line @typescript-eslint/camelcase
+            parse_mode: 'HTML'
+        }
+    );
 }
 
 export async function publishCartoonById(
@@ -90,7 +103,7 @@ export async function publishLatestCartoon(
         await publishCartoonByCartoon(cartoon, bot, redive);
         await sleep(IMAGE_DELAY);
     }
-    
+
     const newLatestCartoonId = newCartoons.pop()?.id || latestCartoonId;
     setLatestState(redive.server, 'latest_cartoon_id', newLatestCartoonId);
     return newLatestCartoonId;
