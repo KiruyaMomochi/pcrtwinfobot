@@ -135,7 +135,6 @@ export class Redive {
             page++, listInPage = await this.getLatestCartoons(page)
         ) {
             cartoonList = cartoonList.concat(listInPage);
-            console.log(cartoonList);
             await sleep(this.apiDelay);
         }
 
