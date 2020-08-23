@@ -1,24 +1,17 @@
-/* eslint-disable @typescript-eslint/camelcase */
 import axios from 'axios';
 import { stringify as qstringify } from 'querystring';
-import { NodeElement, NodeArray, TelegraphArticle, NodeObject } from '../typings';
-import { TELEGRAPH_TOKEN } from '../config.json';
-
-interface ExtraPage {
-    authorName?: string;
-    authorUrl?: string;
-    returnContent?: boolean;
-}
+import { TelegraphResult, NodeElement, ExtraPage, NodeArray, NodeObject, TelegraphResponse } from '../typings/telegraph';
 
 export class Telegraph {
-    constructor(readonly token: string = TELEGRAPH_TOKEN) {
-
+    constructor(
+        readonly token: string,
+        readonly api: string = 'https://api.telegra.ph/createPage') {
     }
 
-    createPage(
+    async createPage(
         title: string,
         content: string,
-        extra?: ExtraPage): Promise<TelegraphArticle> {
+        extra?: ExtraPage): Promise<TelegraphResult> {
 
         const postData = {
             access_token: this.token,
@@ -29,20 +22,19 @@ export class Telegraph {
             return_content: extra?.returnContent
         };
 
-        return axios.post(
-            'https://api.telegra.ph/createPage',
+        const response = await axios.post(
+            this.api,
             qstringify(postData)
-        ).then((response) => {
-            const data = response.data;
-            if (data.ok) {
-                return data.result;
-            }
-            else {
-                throw data.error;
-            }
-        });
+        );
+        const data: TelegraphResponse = response.data;
+        
+        if (data.ok) {
+            return data.result;
+        }
+        else {
+            throw data.error;
+        }
     }
-
 
     static domToNode(domNode: Element): NodeElement {
         if (domNode.nodeType == domNode.TEXT_NODE) {
@@ -92,17 +84,17 @@ export class Telegraph {
     }
 
     uploadNodes(title: string, nodes: NodeArray, extra?: ExtraPage):
-        Promise<TelegraphArticle> {
+        Promise<TelegraphResult> {
         return this.createPage(title, JSON.stringify(nodes), extra);
     }
 
     uploadChildren(title: string, clooec: HTMLCollection, extra?: ExtraPage):
-        Promise<TelegraphArticle> {
+        Promise<TelegraphResult> {
         return this.uploadNodes(title, Telegraph.childrenToNodes(clooec), extra);
     }
 
     uploadElement(title: string, element: Element, extra?: ExtraPage):
-        Promise<TelegraphArticle> {
+        Promise<TelegraphResult> {
         const node = Telegraph.domToNode(element);
         if (node) {
             return this.uploadNodes(title, [node], extra);

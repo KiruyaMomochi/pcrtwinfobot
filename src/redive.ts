@@ -1,148 +1,104 @@
 import axios from 'axios';
-import { HEADERS, API_SERVER, API_DELAY, ARTICLE_DELAY, IMAGE_DELAY } from '../config.json';
 import { JSDOM } from 'jsdom';
 import { sleep } from './utils';
-import { CartoonList, CartoonUrl, Article, Cartoon } from '../typings';
+import { AnnounceData, Announce, Article, Tag } from '../typings/article';
+import { CartoonList, Cartoon, CartoonUrl } from '../typings/cartoon';
+
+const taglist: Record<number, Tag> = {
+    1: 'activity',
+    2: 'gotcha',
+    3: 'special',
+    4: 'update',
+    5: 'maintaince',
+    6: 'info',
+    7: 'statement'
+};
+
+function classNameToTag(className: string): Tag | undefined {
+    className = className.replace('icon_', '');
+    return taglist[Number(className)];
+}
 
 export class Redive {
-    static article_list = '/information/ajax_announce';
-    static info_detail = '/information/detail/';
-    static thumbnail_list = '/cartoon/thumbnail_list/';
-    static cartoon_datail = '/cartoon/detail/'
+    static readonly ajax_announce = '/information/ajax_announce';
+    static readonly info_detail = '/information/detail';
+    static readonly thumbnail_list = '/cartoon/thumbnail_list';
+    static readonly cartoon_datail = '/cartoon/detail'
 
     constructor(
-        readonly server = API_SERVER,
-        readonly headers = HEADERS,
-        readonly apiDelay = API_DELAY,
-        readonly articleSendDelay = ARTICLE_DELAY,
-        readonly imageSendDelay = IMAGE_DELAY) {
-
+        readonly server: string,
+        readonly headers: Record<string, string>,
+        readonly apiDelay: number) {
     }
 
     joinUrl(path: string): string {
         return this.server + path;
     }
 
-    getLatestArticleIds(offset = 0): Promise<Array<number>> {
-        return axios.get(this.joinUrl(Redive.article_list), {
+    async announce(offset = 0): Promise<AnnounceData> {
+        const response = await axios.get(this.joinUrl(Redive.ajax_announce), {
             params: { offset: offset },
             headers: this.headers
-        })
-            .then((response) => response.data.announce_list)
-            .then((list) => list.map((i: { announce_id: number }) => i.announce_id));
+        });
+
+        return response.data;
+    }
+
+    async cartoonList(page = 0): Promise<CartoonList> {
+        const url = this.joinUrl(Redive.thumbnail_list + '/' + String(page));
+        const response = await axios.get(url, { headers: this.headers });
+
+        return response.data ?? [];
     }
 
     async getArticleById(id: number): Promise<Article> {
         const response = await axios.get(
-            this.server + Redive.info_detail + String(id),
+            this.joinUrl(Redive.info_detail + '/' + String(id)),
             { headers: this.headers });
 
         const document = new JSDOM(response.data).window.document;
         const children = document.getElementsByClassName('messages')[0].children;
 
-        const title = document.getElementsByClassName('title')[0].innerHTML;
+        const title = document.getElementsByClassName('title')[0].innerHTML.trim();
+        const date = new Date(document.getElementsByClassName('date')[0].innerHTML.trim());
+        const tagClass = document.getElementsByClassName('date')[0].classList[1].trim();
         if (!children.length) {
             throw 'ARTICLE_NOT_EXIST';
         }
 
         return {
             title: title,
+            date: date,
+            tag: classNameToTag(tagClass),
             content: children
         };
-    }
-
-    async getAllArticleIds(): Promise<Array<number>> {
-        let ids: Array<number> = [];
-        let offset = 0;
-        let data = await this.getLatestArticleIds(offset);
-        while (data.length) {
-            await sleep(this.apiDelay);
-            ids = ids.concat(data);
-            offset += 10;
-            data = await this.getLatestArticleIds(offset);
-        }
-
-        return ids.reverse();
-    }
-
-    async getLatestCartoons(page = 0): Promise<CartoonList> {
-        const url = this.joinUrl(Redive.thumbnail_list + String(page));
-        const response = await axios.get(url, { headers: this.headers });
-
-        return response.data ?? [];
     }
 
     async* makeCartoonIterator(): AsyncGenerator<Cartoon, void, undefined> {
         let page = 0;
         for (
-            let cartoon = await this.getLatestCartoons(page);
+            let cartoon = await this.cartoonList(page);
             cartoon.length != 0;
-            page++, cartoon = await this.getLatestCartoons(page)) {
+            page++, cartoon = await this.cartoonList(page)) {
             yield* cartoon;
             await sleep(this.apiDelay);
         }
     }
 
-    async* makeArticleIdIterator(): AsyncGenerator<number, void, undefined> {
+    async* makeAnnounceIterator(): AsyncGenerator<Announce, void, undefined> {
         let offset = 0;
         for (
-            let article = await this.getLatestArticleIds(offset);
+            let article = await this.announce(offset);
             article.length != 0;
-            offset += article.length,
-            article = await this.getLatestArticleIds(offset)) {
-            yield* article;
+            offset = article.length,
+            article = await this.announce(offset)) {
+            yield* article.announce_list;
             await sleep(this.apiDelay);
         }
-    }
-
-    async getCartoonsAfter(id: string): Promise<CartoonList> {
-        if (id == undefined) {
-            throw 'ERROR: undefined id';
-        }
-        const cartoonit = this.makeCartoonIterator();
-        const result: CartoonList = [];
-        for await (const cartoon of cartoonit) {
-            if (cartoon.id == id) {
-                break;
-            }
-            result.unshift(cartoon);
-        }
-        return result;
-    }
-
-    async getArticleIdsAfter(id: number): Promise<number[]> {
-        if (id == undefined) {
-            throw 'ERROR: undefined id';
-        }
-        const articleit = this.makeArticleIdIterator();
-        const result: number[] = [];
-        for await (const article of articleit) {
-            if (article == id) {
-                break;
-            }
-            result.unshift(article);
-        }
-        return result;
-    }
-
-    async getAllCartoonIds(): Promise<CartoonList> {
-        let cartoonList: CartoonList = [];
-        let page = 0;
-
-        for (
-            let listInPage = await this.getLatestCartoons(page);
-            listInPage.length != 0;
-            page++, listInPage = await this.getLatestCartoons(page)
-        ) {
-            cartoonList = cartoonList.concat(listInPage);
-            await sleep(this.apiDelay);
-        }
-
-        return cartoonList.reverse();
     }
 
     async getCartoonById(id: string): Promise<CartoonUrl> {
-        const url = this.joinUrl(Redive.cartoon_datail + String(id));
+        const url = this.joinUrl(Redive.cartoon_datail + '/' + String(id));
         const response = await axios.get(url, { headers: this.headers });
 
         const document = new JSDOM(response.data).window.document;
