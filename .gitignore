@@ -115,7 +115,9 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# config
+# Config
 config.json
-state.json
-states
+
+# Test files
+test
+test.ts
