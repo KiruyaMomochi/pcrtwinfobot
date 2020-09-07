@@ -80,8 +80,9 @@ export class Redive {
             let cartoon = await this.cartoonList(page);
             cartoon.length != 0;
             page++, cartoon = await this.cartoonList(page)) {
+            console.log(`Cartoon ${cartoon.length}`);
             yield* cartoon;
-            await sleep(this.apiDelay);
+            sleep(this.apiDelay);
         }
     }
 
@@ -89,11 +90,12 @@ export class Redive {
         let offset = 0;
         for (
             let article = await this.announce(offset);
-            article.length != 0;
+            article.is_over_next_offset == false;
             offset = article.length,
             article = await this.announce(offset)) {
+            console.log(`Article ${article.length}`);
             yield* article.announce_list;
-            await sleep(this.apiDelay);
+            sleep(this.apiDelay);
         }
     }
 

@@ -1,68 +1,22 @@
-import { Redive } from './redive';
-import { Telegraph } from './telegraph';
-import config from '../config.json';
-import { newClient } from './mongo';
-import { Telegraf } from 'telegraf';
-import { PCRInfo } from './pcrinfo';
+import { Connection, ensureIndex } from './mongo';
+import { Schedule } from './agenda';
+import { bot, setBotCommand } from './bot';
 
-const bot = new Telegraf(config.token.bot);
-let interval: NodeJS.Timeout | undefined = undefined;
+(async () => {
+    await Connection.connectToMongo();
+    await ensureIndex();
+    setBotCommand(bot);
+    await bot.telegram.setWebhook('https://www.nekopara.xyz/djioajdsioa');
+    bot.startWebhook('/djioajdsioa', null, 5000);
+    await bot.launch();
 
-async function work(): Promise<void> {
-    const client = newClient();
-    await client.connect();
+    Schedule.agenda.mongo((await Connection.connectToMongo()).db('agenda'));
+    (await Schedule.defineAgenda()).start();
+})();
 
-    try {
-        const redive = new Redive(config.apiServer, config.headers, config.delay.redive);
-        const telegraph = new Telegraph(config.token.telegraph);
-        const db = client.db(config.mongo.dbName);
-        const pcrinfo = new PCRInfo(
-            redive, bot, db, telegraph, config.delay
-        );
-
-        const status = `Starting service.\nDatabase connection: <code>${client.isConnected()}</code>`;
-        await pcrinfo.sendStatus(status);
-
-        await Promise.allSettled([
-            pcrinfo.getNewArticlesAndPublish(config.minid.article),
-            pcrinfo.getNewCartoonsAndPublish(config.minid.cartoon)]);
-
-        await pcrinfo.sendStatus('Exiting service.');
-    } catch (error) {
-        console.log(error);
-        await client.close();
-    }
-
-    await client.close();
-}
-
-function startCycle() {
-    if (interval == undefined) {
-        bot.telegram.sendMessage(config.channel.status, 'Setting interval.');
-        interval = setInterval(work, 30 * 60 * 1000);
-    }
-}
-
-function stopCycle() {
-    if (interval) {
-        bot.telegram.sendMessage(config.channel.status, 'Clearing interval.');
-        clearInterval(interval);
-        interval = undefined;
-    }
-}
-
-bot.command('work', work);
-bot.command('exit', () => {
-    bot.telegram.sendMessage(config.channel.status, 'Exiting.').then(() => process.exit(0));
+process.on('SIGINT', async () => {
+    await Schedule.agenda.stop();
+    await bot.stop();
+    console.log('Bye!');
+    process.exit();
 });
-bot.command('start', startCycle);
-bot.command('stop', stopCycle);
-
-bot.launch();
-
-startCycle();
-
-process.on('SIGINT', () =>
-    bot.telegram.sendMessage(config.channel.status, 'SIGINT')
-        .then(() => { process.exit(); })
-);
