@@ -54,12 +54,12 @@ export class PCRInfo {
     ): Promise<Article> {
         const article = await api.getArticleById(id);
         const page = await this.telegraph.uploadChildren(article.title, article.content);
-        const taginfo = toTagString(article.tag, article.extendTag);
+        const taginfo = toTagString(article.tag ? this.articleConfig.taglist[article.tag] : undefined, article.extendTag);
         const datestr = article.date.toLocaleString('zh-TW', { hour12: false });
 
         // send message
         await this.bot.telegram.sendMessage(channel,
-            `${taginfo}<b>${article.title}</b>\n${page.url}\n${datestr}\t<code>#${id}</code>`,
+            `${taginfo}<b>${article.title.replace(/^【(.+)】/, '')}</b>\n${page.url}\n${datestr}\t<code>#${id}</code>`,
             {
                 parse_mode: 'HTML'
             });
@@ -109,7 +109,7 @@ export class PCRInfo {
 
         // send message
         await this.bot.telegram.sendMessage(channel,
-            `${taginfo}<b>${news.title}</b>\n${page.url}\n${datestr}\t<code>News#${item.id}</code>`,
+            `${taginfo}<b>${news.title.replace(/^【(.+)】/, '')}</b>\n${page.url}\n${datestr}\t<code>News#${item.id}</code>`,
             {
                 parse_mode: 'HTML'
             });
@@ -184,6 +184,8 @@ export class PCRInfo {
         const newnews = await this.getNewNews(newsapi, minid, skip);
         const collection = this.db.collection('news');
         const rets: News[] = [];
+
+        console.log(`New news: ${newnews.length}`);
 
         for (const news of newnews) {
             const ret = await this.publishNews(newsapi, news, channel);

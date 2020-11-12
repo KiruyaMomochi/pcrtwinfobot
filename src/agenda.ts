@@ -36,6 +36,7 @@ export class Schedule {
         await this.agenda.every('1 0-6,22-23 * * *', 'check news');
 
         await this.agenda.now('check ajax announce');
+        await this.agenda.now('check news');
 
         return this.agenda;
     }

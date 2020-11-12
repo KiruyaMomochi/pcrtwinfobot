@@ -76,7 +76,7 @@ export async function workCartoons(): Promise<Cartoon[] | undefined> {
 }
 
 export async function workNews(): Promise<News[] | undefined> {
-    console.log('workCartoons()');
+    console.log('workNews()');
     const client = await Connection.connectToMongo();
     try {
         const db = client.db(config.mongo.dbName);
