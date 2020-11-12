@@ -1,8 +1,9 @@
-import axios from 'axios';
+import Axios, { AxiosInstance } from 'axios';
 import { JSDOM } from 'jsdom';
-import { sleep } from './utils';
 import { AnnounceData, Announce, Article, Tag } from '../typings/article';
 import { CartoonList, Cartoon, CartoonUrl } from '../typings/cartoon';
+import { ApiConfig, TagMapList } from '../typings/config';
+import { getExtendTag } from './utils';
 
 const taglist: Record<number, Tag> = {
     1: 'activity',
@@ -20,41 +21,41 @@ function classNameToTag(className: string): Tag | undefined {
 }
 
 export class Redive {
-    static readonly ajax_announce = '/information/ajax_announce';
-    static readonly info_detail = '/information/detail';
-    static readonly thumbnail_list = '/cartoon/thumbnail_list';
-    static readonly cartoon_datail = '/cartoon/detail'
+    static readonly ajax_announce = 'information/ajax_announce';
+    static readonly info_detail = 'information/detail';
+    static readonly thumbnail_list = 'cartoon/thumbnail_list';
+    static readonly cartoon_datail = 'cartoon/detail'
+    readonly axios: AxiosInstance;
+    readonly tagMap: TagMapList;
 
     constructor(
-        readonly server: string,
-        readonly headers: Record<string, string>,
-        readonly apiDelay: number) {
-    }
-
-    joinUrl(path: string): string {
-        return this.server + path;
+        config: ApiConfig,
+        server: string | null = null
+    ) {
+        this.axios = Axios.create({
+            baseURL: server ?? config.servers[0].address,
+            headers: config.headers
+        });
+        this.tagMap = config.article.tagMap;
     }
 
     async announce(offset = 0): Promise<AnnounceData> {
-        const response = await axios.get(this.joinUrl(Redive.ajax_announce), {
-            params: { offset: offset },
-            headers: this.headers
+        const response = await this.axios.get(Redive.ajax_announce, {
+            params: { offset: offset }
         });
 
         return response.data;
     }
 
     async cartoonList(page = 0): Promise<CartoonList> {
-        const url = this.joinUrl(Redive.thumbnail_list + '/' + String(page));
-        const response = await axios.get(url, { headers: this.headers });
+        const url = Redive.thumbnail_list + '/' + String(page);
+        const response = await this.axios.get(url);
 
         return response.data ?? [];
     }
 
     async getArticleById(id: number): Promise<Article> {
-        const response = await axios.get(
-            this.joinUrl(Redive.info_detail + '/' + String(id)),
-            { headers: this.headers });
+        const response = await this.axios.get(Redive.info_detail + '/' + String(id));
 
         const document = new JSDOM(response.data).window.document;
         const children = document.getElementsByClassName('messages')[0].children;
@@ -69,6 +70,7 @@ export class Redive {
         return {
             title: title,
             date: date,
+            extendTag: getExtendTag(title),
             tag: classNameToTag(tagClass),
             content: children
         };
@@ -80,9 +82,7 @@ export class Redive {
             let cartoon = await this.cartoonList(page);
             cartoon.length != 0;
             page++, cartoon = await this.cartoonList(page)) {
-            console.log(`Cartoon ${cartoon.length}`);
             yield* cartoon;
-            sleep(this.apiDelay);
         }
     }
 
@@ -93,15 +93,13 @@ export class Redive {
             article.is_over_next_offset == false;
             offset = article.length,
             article = await this.announce(offset)) {
-            console.log(`Article ${article.length}`);
             yield* article.announce_list;
-            sleep(this.apiDelay);
         }
     }
 
     async getCartoonById(id: string): Promise<CartoonUrl> {
-        const url = this.joinUrl(Redive.cartoon_datail + '/' + String(id));
-        const response = await axios.get(url, { headers: this.headers });
+        const url = Redive.cartoon_datail + '/' + String(id);
+        const response = await this.axios.get(url);
 
         const document = new JSDOM(response.data).window.document;
         const img = document.getElementsByClassName('main_cartoon')[0].children[0] as HTMLImageElement;

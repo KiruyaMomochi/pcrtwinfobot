@@ -71,6 +71,7 @@
   },
   "include": [
     "src/**/*",
-    "config.json"
+    "typings/**/*",
+    "config.ts"
   ]
 }

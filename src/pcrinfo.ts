@@ -1,133 +1,87 @@
+import Telegraf from 'telegraf';
+import { Db as Mongodb } from 'mongodb';
+
 import { Redive } from './redive';
 import { Telegraph } from './telegraph';
-import Telegraf from 'telegraf';
-import { TelegrafContext } from 'telegraf/typings/context';
-import { Cartoon } from '../typings/cartoon';
+import { dateDiffInDays, sleep } from './utils';
+
+import { ChatID, CartoonConfig, ArticleConfig, NewsConfig } from '../typings/config';
+import { PCRContext } from '../typings/bot';
 import { Article, Tag, Announce } from '../typings/article';
-import { Db } from 'mongodb';
-import { sleep } from './utils';
+import { Cartoon as Cartoon } from '../typings/cartoon';
 import { Message } from 'telegraf/typings/telegram-types';
+import { News, NewsItem, NewsRetriver } from './news';
+
+function toTagString(tag?: Tag | string, extendTag?: string[]): string {
+    const tags = new Set([tag, ...extendTag ?? []]);
+    let taginfo = '';
+    for (const tag of tags) {
+        taginfo = taginfo + '#' + tag + ' ';
+    }
+    taginfo = taginfo.trim();
+    if (taginfo != '') {
+        taginfo += '\n';
+    }
+    return taginfo;
+}
 
 export class PCRInfo {
+    readonly statusChannel: ChatID;
+    readonly cartoonConfig: CartoonConfig;
+    readonly articleConfig: ArticleConfig;
+    readonly newsConfig: NewsConfig;
+
     constructor(
-        readonly redive: Redive,
-        readonly bot: Telegraf<TelegrafContext>,
-        readonly db: Db,
-        readonly telegraph: Telegraph,
-        readonly delay: {
-            redive: number;
-            telegram: {
-                article: number,
-                cartoon: number
-            };
-        },
-        readonly channel: {
-            article: string | number,
-            cartoon: string | number,
-            status: string | number,
-        },
-        readonly skip: {
-            article: number,
-            cartoon: number
-        }
+        readonly bot: Telegraf<PCRContext>,
+        readonly db: Mongodb,
+        readonly telegraph: Telegraph
     ) {
+        this.statusChannel = bot.context.config.debug.channel;
+        this.cartoonConfig = bot.context.config.api.cartoon;
+        this.articleConfig = bot.context.config.api.article;
+        this.newsConfig = bot.context.config.news;
     }
 
-    static taglist: Record<Tag, string> = {
-        'activity': '活動',
-        'gotcha': '轉蛋',
-        'special': '特別活動',
-        'update': '更新',
-        'maintaince': '維護',
-        'info': '最新情報',
-        'statement': '問題說明'
-    };
-    
-    static titletag: [string | RegExp, string][] = [
-        ['精選轉蛋', '精選轉蛋'],
-        ['★3必中白金轉蛋', '必中白金'],
-        ['獎勵轉蛋', '獎勵轉蛋'],
-        ['戰隊競賽', '戰隊競賽'],
-        ['露娜之塔', '露娜之塔'],
-        ['外掛停權', '外掛停權'],
-        ['公會小屋', '公會小屋'],
-        ['大師商店', '大師商店'],
-        ['停機維護', '停機維護'],
-        ['復刻', '復刻'],
-        ['探索', '探索'],
-        ['地下城', '地下城'],
-        ['登入送', '登入送'],
-        ['劇情活動', '劇情活動'],
-        ['補償', '補償'],
-        ['聖跡調査', '調査'],
-        ['神殿調査', '調査'],
-        ['組合包', '組合包'],
-        ['增量包', '增量包'],
-        ['大師硬幣', '大師硬幣'],
-        ['支線劇情', '支線劇情'],
-        ['體力加倍', '體力加倍'],
-        [/免費\d+連?抽/, '免費抽'],
-        ['2倍掉落', '2倍掉落'],
-        ['3倍掉落', '3倍掉落'],
-        ['落量2倍', '2倍掉落'],
-        ['落量3倍', '3倍掉落'],
-        ['小遊戲', '小遊戲'],
-        ['公主祭典', '公主祭典']
-    ]
-
+    /**
+     * Publish article id to the channel
+     * @param id the article id
+     * @param channel the channel id or username
+     */
     async publishArticle(
-        id: number
+        api: Redive,
+        id: number,
+        channel: ChatID
     ): Promise<Article> {
-        const article = await this.redive.getArticleById(id);
+        const article = await api.getArticleById(id);
         const page = await this.telegraph.uploadChildren(article.title, article.content);
-
-        let tags: string[] = [];
-
-        if (article.tag) {
-            tags.push(PCRInfo.taglist[article.tag]);
-        }
-
-        for (const tt of PCRInfo.titletag) {
-            if (article.title.match(tt[0])) {
-                tags.push(tt[1]);
-            }
-        }
-
-        const artag = article.title.match('【(.+)】');
-        if (artag != null) {
-            tags.unshift(artag[1]);
-            article.title = article.title.replace(artag[0], '');
-        }
-        
-        tags = [...new Set(tags)];
-
-        let taginfo = '';
-        for (const tag of tags) {
-            taginfo = taginfo + '#' + tag + ' ';
-        }
-        taginfo = taginfo.trim();
-        if (taginfo != '') {
-            taginfo += '\n';
-        }
-
+        const taginfo = toTagString(article.tag, article.extendTag);
         const datestr = article.date.toLocaleString('zh-TW', { hour12: false });
 
-        await this.bot.telegram.sendMessage(this.channel.article,
+        // send message
+        await this.bot.telegram.sendMessage(channel,
             `${taginfo}<b>${article.title}</b>\n${page.url}\n${datestr}\t<code>#${id}</code>`,
             {
                 parse_mode: 'HTML'
             });
 
+        // return the article
         return article;
     }
 
+    /**
+     * Publish cartoon to the channel
+     * @param cartoon the cartoon objectr
+     * @param channel the channel id or username
+     */
     async publishCartoon(
-        cartoon: Cartoon
+        api: Redive,
+        cartoon: Cartoon,
+        channel: ChatID
     ): Promise<Cartoon> {
-        const url = await this.redive.getCartoonById(cartoon.id);
+        const url = await api.getCartoonById(cartoon.id);
 
         await this.bot.telegram.sendPhoto(
-            this.channel.cartoon,
+            channel,
             url,
             {
                 caption: `<b>第 ${cartoon.episode} 話</b>: ${cartoon.title}\n${url}`,
@@ -137,7 +91,37 @@ export class PCRInfo {
         return cartoon;
     }
 
-    async sendStatus(message: string, statusChannel: string | number = this.channel.status): Promise<Message> {
+
+    /**
+     * Publish cartoon to the channel
+     * @param cartoon the cartoon objectr
+     * @param channel the channel id or username
+     */
+    async publishNews(
+        newsapi: NewsRetriver,
+        item: NewsItem,
+        channel: ChatID
+    ): Promise<News> {
+        const news = await newsapi.getNews(item);
+        const page = await this.telegraph.uploadChildren(news.title, news.content);
+        const taginfo = toTagString(news.categoryName, news.extendtag);
+        const datestr = news.publishDate?.toLocaleString('zh-TW', { hour12: false });
+
+        // send message
+        await this.bot.telegram.sendMessage(channel,
+            `${taginfo}<b>${news.title}</b>\n${page.url}\n${datestr}\t<code>News#${item.id}</code>`,
+            {
+                parse_mode: 'HTML'
+            });
+
+        // return the article
+        return news;
+    }
+
+    async sendStatus(
+        message: string,
+        statusChannel: ChatID = this.statusChannel
+    ): Promise<Message> {
         const msg = await this.bot.telegram.sendMessage(
             statusChannel,
             message,
@@ -148,78 +132,116 @@ export class PCRInfo {
         return msg;
     }
 
-    async getNewArticlesAndPublish(minid = 0): Promise<Article[]> {
-        const newarts = await this.getNewArticles(minid, this.skip.article);
+    async getNewArticlesAndPublish(
+        api: Redive,
+        channel: ChatID = this.articleConfig.channel,
+        minid = this.articleConfig.minid,
+        skip = this.articleConfig.skip,
+        delay = this.articleConfig.delay
+    ): Promise<Article[]> {
+        const newarts = await this.getNewArticles(api, minid, skip);
         const collection = this.db.collection('articles');
         const rets: Article[] = [];
 
         for (const announce of newarts) {
-            const ret = await this.publishArticle(announce.announce_id);
+            const ret = await this.publishArticle(api, announce.announce_id, channel);
             await collection.insertOne(announce);
             rets.push(ret);
-            await sleep(this.delay.telegram.article);
+            await sleep(delay);
         }
 
         return rets;
     }
 
-    async getNewCartoonsAndPublish(minid = 0): Promise<Cartoon[]> {
-        const newcars = await this.getNewCartoons(minid, this.skip.cartoon);
+    async getNewCartoonsAndPublish(
+        api: Redive,
+        channel: ChatID = this.cartoonConfig.channel,
+        minid = this.cartoonConfig.minid,
+        skip = this.cartoonConfig.skip,
+        delay = this.cartoonConfig.delay
+    ): Promise<Cartoon[]> {
+        const newcars = await this.getNewCartoons(api, minid, skip);
         console.log(newcars);
         const collection = this.db.collection('cartoons');
         const rets: Cartoon[] = [];
 
         for (const cartoon of newcars) {
-            const ret = await this.publishCartoon(cartoon);
+            const ret = await this.publishCartoon(api, cartoon, channel);
             await collection.insertOne(cartoon);
             rets.push(ret);
-            await sleep(this.delay.telegram.cartoon);
+            await sleep(delay);
         }
 
         return rets;
     }
 
-    async getNewArticles(minid: number, lenskp: number): Promise<Announce[]> {
-        let status = 'Articles: ';
+    async getNewNewsAndPublish(
+        newsapi: NewsRetriver,
+        channel: ChatID = this.newsConfig.channel,
+        minid = this.newsConfig.minid,
+        skip = this.newsConfig.skip,
+        delay = this.newsConfig.delay
+    ): Promise<News[]> {
+        const newnews = await this.getNewNews(newsapi, minid, skip);
+        console.log(newnews);
+        const collection = this.db.collection('news');
+        const rets: News[] = [];
 
+        for (const news of newnews) {
+            const ret = await this.publishNews(newsapi, news, channel);
+            await collection.insertOne(news);
+            rets.push(ret);
+            await sleep(delay);
+        }
+
+        return rets;
+    }
+
+    private async getNewArticles(
+        api: Redive, minid: number, skip: number): Promise<Announce[]> {
         let cnt = 0;
         const newarts: Announce[] = [];
         const collection = this.db.collection('articles');
 
-        for await (const announce of this.redive.makeAnnounceIterator()) {
+        for await (const announce of api.makeAnnounceIterator()) {
             const findResult = await collection.findOne({
                 announce_id: announce.announce_id,
                 replace_time: announce.replace_time
             });
+            let findNews: NewsItem | null = null;
 
             cnt++;
 
-            if (findResult == null && announce.announce_id >= minid) {
+            if (findResult == null) {
+                const res = await this.db.collection('news').findOne(
+                    { 'title': announce.title.title }
+                ) as NewsItem;
+                const date = res.publishDate;
+                if (date && dateDiffInDays(date, new Date(announce.replace_time)) < 1) {
+                    findNews = res;
+                }
+            }
+
+            if (findResult == null && findNews == null && announce.announce_id >= minid) {
                 cnt = 0;
-                status += `<code>${announce.announce_id}</code> `;
                 newarts.push(announce);
             }
 
-            if (cnt >= lenskp) {
+            if (cnt >= skip) {
                 break;
             }
         }
 
-        status = status.trimEnd() + `\nGot ${newarts.length} articles in total.`;
-        if (newarts.length != 0) {
-            await this.sendStatus(status);
-        }
         return newarts.reverse();
     }
 
-    async getNewCartoons(minid: number, lenskp: number): Promise<Cartoon[]> {
-        let status = 'Cartoons: ';
-
+    private async getNewCartoons(
+        api: Redive, minid: number, lenskp: number): Promise<Cartoon[]> {
         let cnt = 0;
         const newcars: Cartoon[] = [];
         const collection = this.db.collection('cartoons');
 
-        for await (const cartoon of this.redive.makeCartoonIterator()) {
+        for await (const cartoon of api.makeCartoonIterator()) {
             const findResult = await collection.findOne({
                 id: cartoon.id,
                 episode: cartoon.episode,
@@ -230,7 +252,6 @@ export class PCRInfo {
 
             if (findResult == null && Number(cartoon.id) >= minid) {
                 cnt = 0;
-                status += `<code>${cartoon.id}</code> `;
                 newcars.push(cartoon);
             }
 
@@ -239,10 +260,46 @@ export class PCRInfo {
             }
         }
 
-        status = status.trimRight() + `\nGot ${newcars.length} cartoons in total.`;
-        if (newcars.length != 0) {
-            await this.sendStatus(status);
-        }
         return newcars.reverse();
+    }
+
+
+    private async getNewNews(
+        newsapi: NewsRetriver, minid: number, lenskp: number): Promise<NewsItem[]> {
+        let cnt = 0;
+        const newnews: NewsItem[] = [];
+        const collection = this.db.collection('news');
+
+        for await (const news of newsapi.makeNewsItemIterator()) {
+            const findResult = await collection.findOne({
+                id: news.id,
+                title: news.title,
+                publishDate: news.publishDate
+            });
+            let findArticle: Announce | null = null;
+
+            cnt++;
+
+            if (findResult == null) {
+                const res = await this.db.collection('articles').findOne(
+                    { 'title.title': news.title }
+                ) as Announce;
+                const date = new Date(res.replace_time);
+                if (news.publishDate && dateDiffInDays(date, news.publishDate) < 1) {
+                    findArticle = res;
+                }
+            }
+
+            if (findResult == null && findArticle == null && Number(news.id) >= minid) {
+                cnt = 0;
+                newnews.push(news);
+            }
+
+            if (cnt >= lenskp) {
+                break;
+            }
+        }
+
+        return newnews.reverse();
     }
 }

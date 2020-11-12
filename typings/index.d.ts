@@ -6,7 +6,7 @@ export class MyContext extends TelegrafContext {
     db: {
         sendArticleById: (id: number) => Promise<Message>;
         sendAllArticles: () => Promise<void>;
-    }
+    } | undefined
 }
 
 export interface Vote {
@@ -25,4 +25,4 @@ export interface Keyboard {
 }
 
 // export type Vote = any;
-export { TelegraphResult, NodeElement, ExtraPage, NodeArray, NodeObject, TelegraphResponse } from '../typings/telegraph';
+export { TelegraphResult, NodeElement, ExtraPage, NodeArray, NodeObject, TelegraphResponse } from './telegraph';

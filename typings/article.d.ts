@@ -35,6 +35,7 @@ export type Tag = 'activity' | 'gotcha' | 'special' | 'update' | 'maintaince' | 
 
 export interface Article {
     tag?: Tag;
+    extendTag?: string[];
     title: string;
     date: Date;
     content: HTMLCollection;

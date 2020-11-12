@@ -1,6 +1,6 @@
 {
   "name": "pcrtwinfobot",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "Push latest 超異域公主連結！Re:Dive news to Telegram channel",
   "main": "index.ts",
   "scripts": {

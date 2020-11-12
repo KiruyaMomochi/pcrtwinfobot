@@ -1,87 +1,36 @@
 import { Redive } from './redive';
 import { Telegraph } from './telegraph';
-import config from '../config.json';
 import { Connection } from './mongo';
 import { Telegraf } from 'telegraf';
 import { PCRInfo } from './pcrinfo';
-import { IncomingMessage, InlineKeyboardButton, Message } from 'telegraf/typings/telegram-types';
+import { InlineKeyboardButton, Message } from 'telegraf/typings/telegram-types';
 import { TelegrafContext } from 'telegraf/typings/context';
 import { Schedule } from './agenda';
 import { Collection } from 'mongodb';
-import { Keyboard, Vote } from '../typings/index';
+import { Keyboard, Vote } from '../typings';
+import { work } from '.';
+import { PCRContext } from '../typings/bot';
+import config from '../config';
 
-export const bot = new Telegraf(config.token.bot);
+export const bot = new Telegraf<PCRContext>(config.bot.token);
 
-export async function work(): Promise<void> {
-    console.log('work()');
-    const client = await Connection.connectToMongo();
-
-    try {
-        const redive = new Redive(config.apiServer[0].address, config.headers, config.delay.redive);
-        const telegraph = new Telegraph(config.token.telegraph);
-        const db = client.db(config.mongo.dbName);
-        const pcrinfo = new PCRInfo(
-            redive, bot, db, telegraph, config.delay, config.channel, config.skip
-        );
-
-        const status = `Starting service.\nDatabase connection: <code>${client.isConnected()}</code>`;
-        await pcrinfo.sendStatus(status);
-
-        await Promise.allSettled([
-            pcrinfo.getNewArticlesAndPublish(config.minid.article),
-            pcrinfo.getNewCartoonsAndPublish(config.minid.cartoon)]);
-
-        await pcrinfo.sendStatus('Exiting service.');
-    } catch (error) {
-        console.log(error);
-        bot.telegram.sendMessage(config.channel.status,
-            `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
-        );
-    }
-}
-
-function article(ctx: TelegrafContext) {
-    console.log('/article');
+function article(ctx: PCRContext) {
+    // check if message or text is null
     if (ctx.message == null) {
         return ctx.reply('Null message.');
     }
     if (ctx.message.text == null) {
         return ctx.reply('Null text.');
     }
-
-    const text = ctx.message.text.split(/\s/);
-    let articleid: number | undefined;
-    let server: string;
-
-    switch (text.length) {
-    case 0:
-        return ctx.reply('Null message.');
-        break;
-    case 1:
-        return ctx.reply('Please tell me article ID.');
-        break;
-    case 2:
-        articleid = Number(text[1]);
-        server = config.apiServer[0].address;
-        break;
-    case 3:
-        articleid = Number(text[2]);
-        if (isNaN(Number(text[1]))) {
-            try {
-                new URL(text[1]);
-            } catch (error) {
-                return ctx.reply(`Don't know how to deal with ${text[2]}.`);
-            }
-            server = text[2];
-        } else {
-            server = config.apiServer[Number(text[1])]?.address;
-        }
-        break;
-    default:
-        return ctx.reply('Don\'t know what to do.');
-        break;
+    
+    // find articleid and server
+    const ret = parseText(ctx.message.text);
+    if (ret == undefined) {
+        return;
     }
+    const [articleid, server] = ret;
 
+    // double check
     if (articleid == undefined || isNaN(articleid)) {
         return ctx.reply('The article id is not a number.');
     }
@@ -89,82 +38,124 @@ function article(ctx: TelegrafContext) {
         return ctx.reply('The server is not vaild.');
     }
 
+    // reply status
     ctx.reply(`Publishing article ${articleid} from server ${server}`);
 
+    function parseText(msg:string): [number, string] | void {
+        // split text
+        const text = msg.split(/\s/);
+        let articleid: number;
+        let server: string;
+        
+        switch (text.length) {
+        case 0:
+            ctx.reply('Null message.');
+            return;
+        case 1:
+            ctx.reply('Please tell me article ID.');
+            return;
+        case 2:
+            // /article 955
+            articleid = Number(text[1]);
+            server = config.api.servers[0].address;
+            break;
+        case 3:
+            articleid = Number(text[2]);
+            if (isNaN(Number(text[1]))) {
+                // /article [url] 955
+                try {
+                    new URL(text[1]);
+                } catch (error) {
+                    ctx.reply(`Don't know how to deal with ${text[2]}.`);
+                    return;
+                }
+                server = text[1];
+            } else {
+                // /article 0 955
+                server = config.api.servers[Number(text[1])]?.address;
+            }
+            break;
+        default:
+            ctx.reply('Don\'t know what to do.');
+            return;
+        }
+        return [articleid, server];
+    }
 
     Connection.connectToMongo().then(
         (client) => {
-            const redive = new Redive(server, config.headers, config.delay.redive);
-            const telegraph = new Telegraph(config.token.telegraph);
+            const telegraph = new Telegraph(config.telegraph.token);
             const db = client.db(config.mongo.dbName);
             const pcrinfo = new PCRInfo(
-                redive, bot, db, telegraph, config.delay, {
-                    article: (ctx.message as IncomingMessage).chat.id,
-                    cartoon: (ctx.message as IncomingMessage).chat.id,
-                    status: (ctx.message as IncomingMessage).chat.id
-                }, config.skip
+                bot, db, telegraph
             );
-            return pcrinfo.publishArticle(articleid as number);
+            if(ctx.message)
+                return pcrinfo.publishArticle(new Redive(config.api, server), articleid as number, ctx.message?.chat.id);
         }
     ).catch(
         (reason) => ctx.reply(`Failed: ${reason}`)
     );
 }
 
-export function setBotCommand(bot: Telegraf<TelegrafContext>): Telegraf<TelegrafContext> {
+export function setBotCommand(bot: Telegraf<PCRContext>): Telegraf<PCRContext> {
     bot.command('work', work);
-    bot.command('start', (ctx) => {
-        Schedule.defineAgenda()
-            .then((agenda) => agenda.start())
-            .then(
-                () => ctx.reply('Started.'),
-                () => ctx.reply('Failed to start.')
-            );
-    });
-    bot.command('stop', (ctx) => {
-        console.log(ctx.from);
-        if (ctx.from?.username == 'djeeta') {
-            Schedule.agenda.stop().then(
-                () => ctx.reply('Stopped.'),
-                () => ctx.reply('Failed to stop.')
-            );
-        } else {
-            ctx.reply('No permission.');
-        }
-    });
+    bot.command('start', start);
+    bot.command('stop', stop);
     bot.command('article', article);
-
-    bot.command('test', async (ctx) => {
-        const db = (await Connection.connectToMongo()).db(config.mongo.dbName);
-        const keyboards: Collection<Keyboard> = db.collection('keyboard');
-        
-        if (ctx.message?.text == null) {
-            return ctx.answerCbQuery('Null text.');
-        }
-        const text = ctx.message.text.split(/\s/);
-        text.shift();
-        const keyboard: InlineKeyboardButton[][] = [
-            text.map((txt) => ({
-                text: txt + ' 0',
-                callback_data: txt
-            }))
-        ];
-        ctx.telegram.sendMessage('@pcrtwstat', '測試喵', {
-            reply_markup: {
-                inline_keyboard: keyboard
-            },
-            disable_notification: true
-        }).then((msg) => {
-            keyboards.insertOne({
-                chat_id: msg.chat.id,
-                message_id: msg.message_id,
-                keyboard: keyboard
-            });
-        });
-    });
-
+    bot.command('test', test);
     bot.on('callback_query', onCallbackQuery);
     return bot;
+}
+
+async function test(ctx: TelegrafContext) {
+    const db = (await Connection.connectToMongo()).db(config.mongo.dbName);
+    const keyboards: Collection<Keyboard> = db.collection('keyboard');
+
+    if (ctx.message?.text == null) {
+        return ctx.answerCbQuery('Null text.');
+    }
+    const text = ctx.message.text.split(/\s/);
+    text.shift();
+    const keyboard: InlineKeyboardButton[][] = [
+        text.map((txt) => ({
+            text: txt + ' 0',
+            callback_data: txt
+        }))
+    ];
+    ctx.telegram.sendMessage('@pcrtwstat', '測試喵', {
+        reply_markup: {
+            inline_keyboard: keyboard
+        },
+        disable_notification: true
+    }).then((msg) => {
+        keyboards.insertOne({
+            chat_id: msg.chat.id,
+            message_id: msg.message_id,
+            keyboard: keyboard
+        });
+    });
+}
+
+async function start(ctx: TelegrafContext) {
+    Schedule.defineAgenda()
+        .then((agenda) => agenda.start())
+        .then(
+            () => ctx.reply('Started.'),
+            () => ctx.reply('Failed to start.')
+        );
+}
+
+
+async function stop(ctx: TelegrafContext) {
+    console.log(ctx.from);
+    if (ctx.from?.username == 'djeeta') {
+        Schedule.agenda.stop().then(
+            () => ctx.reply('Stopped.'),
+            () => ctx.reply('Failed to stop.')
+        );
+    } else {
+        ctx.reply('No permission.');
+    }
 }
 
 async function onCallbackQuery(ctx: TelegrafContext) {

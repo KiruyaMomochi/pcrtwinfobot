@@ -83,17 +83,17 @@ export class Telegraph {
         return nodeArray;
     }
 
-    uploadNodes(title: string, nodes: NodeArray, extra?: ExtraPage):
+    async uploadNodes(title: string, nodes: NodeArray, extra?: ExtraPage):
         Promise<TelegraphResult> {
         return this.createPage(title, JSON.stringify(nodes), extra);
     }
 
-    uploadChildren(title: string, clooec: HTMLCollection, extra?: ExtraPage):
+    async uploadChildren(title: string, clooec: HTMLCollection, extra?: ExtraPage):
         Promise<TelegraphResult> {
         return this.uploadNodes(title, Telegraph.childrenToNodes(clooec), extra);
     }
 
-    uploadElement(title: string, element: Element, extra?: ExtraPage):
+    async uploadElement(title: string, element: Element, extra?: ExtraPage):
         Promise<TelegraphResult> {
         const node = Telegraph.domToNode(element);
         if (node) {

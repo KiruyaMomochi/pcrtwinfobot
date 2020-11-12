@@ -1,7 +1,8 @@
-import { mongo } from '../config.json';
+import config from '../config';
 import { Collection, MongoClient } from 'mongodb';
 import { Keyboard, Vote } from '../typings';
 
+const mongo = config.mongo;
 export const connectionString = `mongodb://${mongo.address}:${mongo.port}`;
 
 function newClient(): MongoClient {
@@ -31,6 +32,7 @@ export async function ensureIndex(): Promise<void> {
     const keyboards: Collection<Keyboard> = db.collection('keyboard');
     const cartoons = db.collection('cartoons');
     const articles = db.collection('articles');
+    const news = db.collection('news');
     await votes.createIndexes([{
         key: {
             chat_id: 1,
@@ -59,6 +61,9 @@ export async function ensureIndex(): Promise<void> {
     await articles.createIndex({
         announce_id: 1,
         replace_time: 1
+    });
+    await news.createIndex({
+        id: 1
     });
     console.log('Index created.');
 }

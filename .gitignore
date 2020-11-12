@@ -116,7 +116,7 @@ dist
 .pnp.*
 
 # Config
-config.json
+config.ts
 
 # Test files
 test

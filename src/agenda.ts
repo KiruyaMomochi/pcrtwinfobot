@@ -1,5 +1,5 @@
 import Agenda from 'agenda';
-import { work } from './bot';
+import { work } from '.';
 
 export class Schedule {
     static agenda = new Agenda();
