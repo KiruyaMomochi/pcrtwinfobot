@@ -44,6 +44,10 @@ export class Redive {
             params: { offset: offset }
         });
 
+        if (response.status != 200) {
+            throw `${response.status}: ${response.statusText}`;
+        }
+
         return response.data;
     }
 
@@ -51,11 +55,19 @@ export class Redive {
         const url = Redive.thumbnail_list + '/' + String(page);
         const response = await this.axios.get(url);
 
+        if (response.status != 200) {
+            throw `${response.status}: ${response.statusText}`;
+        }
+
         return response.data ?? [];
     }
 
     async getArticleById(id: number): Promise<Article> {
         const response = await this.axios.get(Redive.info_detail + '/' + String(id));
+
+        if (response.status != 200) {
+            throw `${response.status}: ${response.statusText}`;
+        }
 
         const document = new JSDOM(response.data).window.document;
         const children = document.getElementsByClassName('messages')[0].children;
@@ -100,6 +112,10 @@ export class Redive {
     async getCartoonById(id: string): Promise<CartoonUrl> {
         const url = Redive.cartoon_datail + '/' + String(id);
         const response = await this.axios.get(url);
+
+        if (response.status != 200) {
+            throw `${response.status}: ${response.statusText}`;
+        }
 
         const document = new JSDOM(response.data).window.document;
         const img = document.getElementsByClassName('main_cartoon')[0].children[0] as HTMLImageElement;
