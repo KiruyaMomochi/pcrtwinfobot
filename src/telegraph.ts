@@ -26,8 +26,9 @@ export class Telegraph {
             this.api,
             qstringify(postData)
         );
+
         const data: TelegraphResponse = response.data;
-        
+
         if (data.ok) {
             return data.result;
         }
@@ -36,9 +37,16 @@ export class Telegraph {
         }
     }
 
-    static domToNode(domNode: Element): NodeElement {
+    static domToNode(
+        domNode: Element,
+        trim = false
+    ): NodeElement {
         if (domNode.nodeType == domNode.TEXT_NODE) {
-            return (domNode as HTMLObjectElement).data;
+            const data = (domNode as HTMLObjectElement).data;
+            if (trim)
+                return data.trim().length != 0 ? data.trimLeft() : undefined;
+            else
+                return data;
         }
         if (domNode.nodeType != domNode.ELEMENT_NODE) {
             return undefined;
@@ -62,17 +70,17 @@ export class Telegraph {
         nodeElement.children = [];
 
         domNode.childNodes.forEach((child) => {
-            const node = Telegraph.domToNode(child as Element);
+            const node = Telegraph.domToNode(child as Element, trim);
             node && nodeElement.children.push(node);
         });
 
         return nodeElement;
     }
 
-    static childrenToNodes(children: HTMLCollection): NodeArray {
+    static childrenToNodes(children: HTMLCollection, trim = false): NodeArray {
         let nodeArray: NodeArray = [];
         for (const child of children) {
-            const node = Telegraph.domToNode(child);
+            const node = Telegraph.domToNode(child, trim);
             if (node instanceof Object && 'children' in node) {
                 nodeArray = nodeArray.concat(node.children);
             }
@@ -88,14 +96,14 @@ export class Telegraph {
         return this.createPage(title, JSON.stringify(nodes), extra);
     }
 
-    async uploadChildren(title: string, clooec: HTMLCollection, extra?: ExtraPage):
+    async uploadChildren(title: string, clooec: HTMLCollection, trim = false, extra?: ExtraPage):
         Promise<TelegraphResult> {
-        return this.uploadNodes(title, Telegraph.childrenToNodes(clooec), extra);
+        return this.uploadNodes(title, Telegraph.childrenToNodes(clooec, trim), extra);
     }
 
-    async uploadElement(title: string, element: Element, extra?: ExtraPage):
+    async uploadElement(title: string, element: Element, trim = false, extra?: ExtraPage):
         Promise<TelegraphResult> {
-        const node = Telegraph.domToNode(element);
+        const node = Telegraph.domToNode(element, trim);
         if (node) {
             return this.uploadNodes(title, [node], extra);
         }

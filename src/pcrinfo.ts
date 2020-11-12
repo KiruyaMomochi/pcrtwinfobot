@@ -103,7 +103,7 @@ export class PCRInfo {
         channel: ChatID
     ): Promise<News> {
         const news = await newsapi.getNews(item);
-        const page = await this.telegraph.uploadChildren(news.title, news.content);
+        const page = await this.telegraph.uploadElement(news.title, news.content);
         const taginfo = toTagString(news.categoryName, news.extendtag);
         const datestr = news.publishDate?.toLocaleString('zh-TW', { hour12: false });
 
@@ -161,7 +161,6 @@ export class PCRInfo {
         delay = this.cartoonConfig.delay
     ): Promise<Cartoon[]> {
         const newcars = await this.getNewCartoons(api, minid, skip);
-        console.log(newcars);
         const collection = this.db.collection('cartoons');
         const rets: Cartoon[] = [];
 
@@ -183,7 +182,6 @@ export class PCRInfo {
         delay = this.newsConfig.delay
     ): Promise<News[]> {
         const newnews = await this.getNewNews(newsapi, minid, skip);
-        console.log(newnews);
         const collection = this.db.collection('news');
         const rets: News[] = [];
 
@@ -215,9 +213,8 @@ export class PCRInfo {
             if (findResult == null) {
                 const res = await this.db.collection('news').findOne(
                     { 'title': announce.title.title }
-                ) as NewsItem;
-                const date = res.publishDate;
-                if (date && dateDiffInDays(date, new Date(announce.replace_time)) < 1) {
+                ) as NewsItem | null;
+                if (res && res.publishDate && dateDiffInDays(res.publishDate, new Date(announce.replace_time)) < 1) {
                     findNews = res;
                 }
             }
@@ -283,13 +280,12 @@ export class PCRInfo {
             if (findResult == null) {
                 const res = await this.db.collection('articles').findOne(
                     { 'title.title': news.title }
-                ) as Announce;
-                const date = new Date(res.replace_time);
-                if (news.publishDate && dateDiffInDays(date, news.publishDate) < 1) {
+                ) as Announce | null;
+                if (res && news.publishDate && dateDiffInDays(new Date(res.replace_time), news.publishDate) < 1) {
                     findArticle = res;
                 }
             }
-
+            
             if (findResult == null && findArticle == null && Number(news.id) >= minid) {
                 cnt = 0;
                 newnews.push(news);
@@ -299,7 +295,7 @@ export class PCRInfo {
                 break;
             }
         }
-
+        
         return newnews.reverse();
     }
 }

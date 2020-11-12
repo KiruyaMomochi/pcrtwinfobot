@@ -13,6 +13,7 @@ import { PCRContext } from '../typings/bot';
 import config from '../config';
 
 export const bot = new Telegraf<PCRContext>(config.bot.token);
+bot.context.config = config;
 
 function article(ctx: PCRContext) {
     // check if message or text is null

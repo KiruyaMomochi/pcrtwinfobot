@@ -23,14 +23,12 @@ export interface News {
     categoryName?: string
     extendtag: string[]
     title: string
-    content: HTMLCollection
+    content: HTMLElement
 }
 
 export class NewsRetriver {
     async news(page = 1): Promise<string> {
-        return this.axios.get('news', {
-            data: { 'page': page }
-        });
+        return this.axios.get(`news?page=${page}`).then(x => x.data);
     }
 
     readonly axios: AxiosInstance;
@@ -41,7 +39,7 @@ export class NewsRetriver {
         });
     }
 
-    async parseNewsHtml(html: string): Promise<NewsItem[]> {
+    static async parseNewsHtml(html: string): Promise<NewsItem[]> {
         const jsdom = new JSDOM(html);
         const artelems = jsdom.window.document.getElementsByTagName('article')[0].getElementsByTagName('dl')[0].children;
 
@@ -77,6 +75,7 @@ export class NewsRetriver {
             }
         }
 
+
         return articles;
     }
 
@@ -99,21 +98,25 @@ export class NewsRetriver {
         const c0 = h2.children[0];
 
         const section = newscon.getElementsByTagName('section')[0];
-        const elem = jsdom.window.document.createElement('div');
+        // const elem = jsdom.window.document.createElement('div');
         const firstNode = section.children[0];
 
         if (firstNode.nodeName == 'H4' && firstNode.innerHTML == '超異域公主連結☆Re：Dive') {
             firstNode.remove();
         }
 
-        for (const si of section.childNodes) {
-            if (si.nodeType != si.TEXT_NODE) {
-                elem.appendChild(si);
-            }
+        while (section.childNodes[0]?.nodeType == section.childNodes[0]?.TEXT_NODE
+            && (section.childNodes[0] as HTMLObjectElement)?.data?.trim()?.length == 0) {
+                section.childNodes[0]?.remove();
         }
+        if (section.childNodes[0]?.nodeType == section.childNodes[0]?.TEXT_NODE && (section.childNodes[0] as HTMLObjectElement))
+        {
+            (section.childNodes[0] as HTMLObjectElement).data = (section.childNodes[0] as HTMLObjectElement).data.trim();
+        }
+
         const news: News = {
             title: h3.textContent ?? 'No title',
-            content: elem.children,
+            content: section,
             extendtag: h3.textContent ? getExtendTag(h3.textContent) : []
         };
         
@@ -131,10 +134,11 @@ export class NewsRetriver {
     async* makeNewsItemIterator(): AsyncGenerator<NewsItem, void, undefined> {
         let page = 1;
         for (
-            let news = await this.parseNewsHtml(await this.news(page));
-            news.length == 0;
-            news = await this.parseNewsHtml(await this.news(++page))) {
+            let news = await NewsRetriver.parseNewsHtml(await this.news(page));
+            news.length != 0;) {
             yield* news;
+            page++;
+            news = await NewsRetriver.parseNewsHtml(await this.news(page));
         }
     }
 }
