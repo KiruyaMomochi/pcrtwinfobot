@@ -1,5 +1,6 @@
 import Agenda from 'agenda';
 import { work, workArticles, workCartoons, workNews } from '.';
+import config from '../config';
 
 export class Schedule {
     static agenda = new Agenda();
@@ -32,18 +33,18 @@ export class Schedule {
             work();
         });
 
-        await this.agenda.every('1,31 7-21 * * *', 'check ajax announce');
-        await this.agenda.every('57 12 * * *', 'check ajax announce');
-        await this.agenda.every('1 0-6,22-23 * * *', 'check ajax announce');
-
-        await this.agenda.every('1,2,4,8,16 * * *', 'check cartoon');
-
-        await this.agenda.every('5,35 7-21 * * *', 'check news');
-        await this.agenda.every('59 12 * * *', 'check news');
-        await this.agenda.every('5 0-6,22-23 * * *', 'check news');
+        const schdule = config.schedule;
+        for await (const cron of schdule.article) {
+            await this.agenda.every(cron, 'check ajax announce');                        
+        }
+        for await (const cron of schdule.cartoon) {
+            await this.agenda.every(cron, 'check cartoon');                        
+        }
+        for await (const cron of schdule.news) {
+            await this.agenda.every(cron, 'check news');                        
+        }
 
         await this.agenda.now('update all');
-
         return this.agenda;
     }
 }
