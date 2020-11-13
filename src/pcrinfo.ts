@@ -185,8 +185,6 @@ export class PCRInfo {
         const collection = this.db.collection('news');
         const rets: News[] = [];
 
-        console.log(`New news: ${newnews.length}`);
-
         for (const news of newnews) {
             const ret = await this.publishNews(newsapi, news, channel);
             await collection.insertOne(news);
@@ -212,10 +210,13 @@ export class PCRInfo {
 
             cnt++;
 
+            console.log(announce.title.title);
             if (findResult == null) {
                 const res = await this.db.collection('news').findOne(
                     { 'title': announce.title.title }
                 ) as NewsItem | null;
+                console.log('dup news:');
+                console.log(res);
                 if (res && res.publishDate && dateDiffInDays(res.publishDate, new Date(announce.replace_time)) < 1) {
                     findNews = res;
                 }
@@ -279,11 +280,15 @@ export class PCRInfo {
 
             cnt++;
 
+            console.log(news.title);
             if (findResult == null) {
                 const res = await this.db.collection('articles').findOne(
                     { 'title.title': news.title }
                 ) as Announce | null;
-                if (res && news.publishDate && dateDiffInDays(new Date(res.replace_time), news.publishDate) < 1) {
+                console.log('dup art:');
+                console.log(res);
+                res && news.publishDate && console.log(dateDiffInDays(new Date(res.replace_time * 1000), news.publishDate));
+                if (res && news.publishDate && dateDiffInDays(new Date(res.replace_time * 1000), news.publishDate) < 1) {
                     findArticle = res;
                 }
             }

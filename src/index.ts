@@ -29,8 +29,9 @@ export async function work(): Promise<void> {
 
         await Promise.allSettled([
             pcrinfo.getNewArticlesAndPublish(redive),
-            pcrinfo.getNewCartoonsAndPublish(redive),
-            pcrinfo.getNewNewsAndPublish(news)]);
+            pcrinfo.getNewCartoonsAndPublish(redive)]);
+            
+        await pcrinfo.getNewNewsAndPublish(news);
 
         await pcrinfo.sendStatus('Exiting service.');
     } catch (error) {
@@ -49,6 +50,7 @@ export async function workArticles(): Promise<Article[] | undefined> {
         const pcrinfo = new PCRInfo(
             bot, db, telegraph
         );
+        await pcrinfo.sendStatus('workArticles()');
         return await pcrinfo.getNewArticlesAndPublish(redive);
     } catch (error) {
         console.log(error);
@@ -66,6 +68,7 @@ export async function workCartoons(): Promise<Cartoon[] | undefined> {
         const pcrinfo = new PCRInfo(
             bot, db, telegraph
         );
+        await pcrinfo.sendStatus('workCartoons()');
         return await pcrinfo.getNewCartoonsAndPublish(redive);
     } catch (error) {
         console.log(error);
@@ -83,6 +86,7 @@ export async function workNews(): Promise<News[] | undefined> {
         const pcrinfo = new PCRInfo(
             bot, db, telegraph
         );
+        await pcrinfo.sendStatus('workNews()');
         return await pcrinfo.getNewNewsAndPublish(news);
     } catch (error) {
         console.log(error);
