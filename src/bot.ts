@@ -8,7 +8,7 @@ import { TelegrafContext } from 'telegraf/typings/context';
 import { Schedule } from './agenda';
 import { Collection } from 'mongodb';
 import { Keyboard, Vote } from '../typings';
-import { work } from '.';
+import { work, workArticles, workCartoons, workNews } from '.';
 import { PCRContext } from '../typings/bot';
 import config from '../config';
 
@@ -100,6 +100,9 @@ function article(ctx: PCRContext) {
 
 export function setBotCommand(bot: Telegraf<PCRContext>): Telegraf<PCRContext> {
     bot.command('work', work);
+    bot.command('worka', workArticles);
+    bot.command('workc', workCartoons);
+    bot.command('workn', workNews);
     bot.command('start', start);
     bot.command('stop', stop);
     bot.command('article', article);
