@@ -30,7 +30,7 @@ export async function work(): Promise<void> {
         await Promise.allSettled([
             pcrinfo.getNewArticlesAndPublish(redive),
             pcrinfo.getNewCartoonsAndPublish(redive)]);
-            
+
         await pcrinfo.getNewNewsAndPublish(news);
 
         await pcrinfo.sendStatus('Exiting service.');
@@ -106,7 +106,12 @@ export async function workNews(): Promise<News[] | undefined> {
     await bot.launch();
 
     Schedule.agenda.mongo((await Connection.connectToMongo()).db('agenda'));
-    (await Schedule.defineAgenda()).start();
+    try {
+        await Schedule.agenda.start();
+        await Schedule.defineAgenda();
+    } catch (except) {
+        console.log(except);
+    }
 })();
 
 process.on('SIGINT', async () => {
