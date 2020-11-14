@@ -34,17 +34,27 @@ export class Schedule {
         });
 
         const schdule = config.schedule;
-        for await (const cron of schdule.article) {
-            await this.agenda.every(cron, 'check ajax announce');                        
-        }
-        for await (const cron of schdule.cartoon) {
-            await this.agenda.every(cron, 'check cartoon');                        
-        }
-        for await (const cron of schdule.news) {
-            await this.agenda.every(cron, 'check news');                        
+        const ajax = this.agenda.create('check ajax announce');
+        const cartoon = this.agenda.create('check cartoon');
+        const news = this.agenda.create('check news');
+        try {
+            for await (const cron of schdule.article) {
+                ajax.schedule(cron);
+            }
+            for await (const cron of schdule.cartoon) {
+                cartoon.schedule(cron);
+            }
+            for await (const cron of schdule.news) {
+                news.schedule(cron);
+            }
+            ajax.save();
+            cartoon.save();
+            news.save();
+        } catch (error) {
+            console.log(error);
         }
 
-        await this.agenda.now('update all');
+        await this.agenda.create('update all').run();
         return this.agenda;
     }
 }
