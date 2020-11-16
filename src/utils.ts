@@ -5,7 +5,7 @@ export function sleep(ms: number): Promise<unknown> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function getExtendTag(title: string, tagmap: TagMapList = config.api.article.tagMap): string[] {
+export function getExtendTag(title: string, tagmap: TagMapList = config.misc.tagMap): string[] {
     const tags: string[] = [];
     for (const tt of tagmap) {
         if (title.match(tt[0])) {

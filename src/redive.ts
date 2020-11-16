@@ -2,7 +2,7 @@ import Axios, { AxiosInstance } from 'axios';
 import { JSDOM } from 'jsdom';
 import { AnnounceData, Announce, Article, Tag } from '../typings/article';
 import { CartoonList, Cartoon, CartoonUrl } from '../typings/cartoon';
-import { ApiConfig, TagMapList } from '../typings/config';
+import { ApiConfig } from '../typings/config';
 import { getExtendTag } from './utils';
 
 const taglist: Record<number, Tag> = {
@@ -26,7 +26,6 @@ export class Redive {
     static readonly thumbnail_list = 'cartoon/thumbnail_list';
     static readonly cartoon_datail = 'cartoon/detail'
     readonly axios: AxiosInstance;
-    readonly tagMap: TagMapList;
 
     constructor(
         config: ApiConfig,
@@ -36,7 +35,6 @@ export class Redive {
             baseURL: server ?? config.servers[0].address,
             headers: config.headers
         });
-        this.tagMap = config.article.tagMap;
     }
 
     async announce(offset = 0): Promise<AnnounceData> {

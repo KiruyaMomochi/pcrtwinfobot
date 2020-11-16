@@ -39,18 +39,32 @@ export class Schedule {
         const news = this.agenda.create('check news');
         try {
             for await (const cron of schdule.article) {
-                ajax.repeatEvery(cron, {timezone: 'Asia/Taipei'}).save();
+                ajax.repeatEvery(cron, { timezone: 'Asia/Taipei' }).save();
             }
             for await (const cron of schdule.cartoon) {
-                cartoon.repeatEvery(cron, {timezone: 'Asia/Taipei'}).save();
+                cartoon.repeatEvery(cron, { timezone: 'Asia/Taipei' }).save();
             }
             for await (const cron of schdule.news) {
-                news.repeatEvery(cron, {timezone: 'Asia/Taipei'}).save();
+                news.repeatEvery(cron, { timezone: 'Asia/Taipei' }).save();
             }
         } catch (error) {
             console.log(error);
         }
 
         return this.agenda;
+    }
+
+    static async NextRunOf(jobName: string): Promise<Date> {
+        return (await this.agenda.jobs({name: jobName}, {'nextRunAt': 1}, 1))[0].attrs.nextRunAt;
+    }
+    
+    static async NextAjax(): Promise<Date> {
+        return this.NextRunOf('check ajax announce');
+    }
+    static async NextCartoon(): Promise<Date> {
+        return this.NextRunOf('check cartoon');
+    }
+    static async NextNews(): Promise<Date> {
+        return this.NextRunOf('check news');
     }
 }

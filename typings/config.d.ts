@@ -8,6 +8,7 @@ export interface Config {
     api: ApiConfig
     news: NewsConfig
     debug: DebugConfig
+    misc: MiscConfig
 }
 
 interface ApiConfig {
@@ -32,7 +33,6 @@ interface ArticleConfig {
     minid: number
     delay: number
     channel: ChatID
-    tagMap: TagMapList
     taglist: Record<Tag, string>
 }
 
@@ -85,6 +85,10 @@ interface WebhookConfig {
 
 interface HeadersConfig {
     'user-agent': UaString
+}
+
+interface MiscConfig {
+    tagMap: TagMapList
 }
 
 export interface ApiServer {

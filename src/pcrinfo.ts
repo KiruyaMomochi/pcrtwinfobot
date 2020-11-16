@@ -105,7 +105,7 @@ export class PCRInfo {
         const news = await newsapi.getNews(item);
         const page = await this.telegraph.uploadElement(news.title, news.content);
         const taginfo = toTagString(news.categoryName, news.extendtag);
-        const datestr = news.publishDate?.toLocaleString('zh-TW', { hour12: false });
+        const datestr = news.publishDate?.toLocaleDateString('zh-TW', { hour12: false });
 
         // send message
         await this.bot.telegram.sendMessage(channel,

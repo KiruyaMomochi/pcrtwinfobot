@@ -1,31 +1,30 @@
-class CustomDate extends Date
-{
-    toCustomString = () => this.toLocaleString('zh-TW', {hour12: false})
-    toString = () => this.toCustomString()
+function format(date: Date): string {
+    const d = new Date(date);
+    d.setHours(date.getHours() + 8);
+    return d.toLocaleString('zh-TW', { hour12: false });
 }
 
-export class Model
-{
-    lastUpdateCartoon:CustomDate = new CustomDate()
-    lastUpdateArticle:CustomDate = new CustomDate()
-    lastUpdateNews:CustomDate = new CustomDate()
-    nextUpdateCartoon:CustomDate = new CustomDate()
-    nextUpdateArticle:CustomDate = new CustomDate()
-    nextUpdateNews:CustomDate = new CustomDate()
-    databaseSize?: number
+class Model {
+    lastUpdateCartoon: Date = new Date(0)
+    lastUpdateArticle: Date = new Date(0)
+    lastUpdateNews: Date = new Date(0)
+    nextUpdateCartoon: Date = new Date(0)
+    nextUpdateArticle: Date = new Date(0)
+    nextUpdateNews: Date = new Date(0)
+    // databaseSize?: number
 
     GetStatusString(): string {
-        return `Last Checked:
-        Cartoon: ${this.lastUpdateCartoon}
-        Article: ${this.lastUpdateArticle}
-        News: ${this.lastUpdateNews}
+        return `<b>Last Checked</b>:
+Cartoon: <code>${format(this.lastUpdateCartoon)}</code>
+Article: <code>${format(this.lastUpdateArticle)}</code>
+News: <code>${format(this.lastUpdateNews)}</code>
 
-        Next Checkpoint:
-        Cartoon: ${this.nextUpdateCartoon}
-        Article: ${this.nextUpdateArticle}
-        News: ${this.nextUpdateNews}
-
-        Database used: ${this.databaseSize}
-        `;
+<b>Next Checkpoint</b>:
+Cartoon: <code>${format(this.nextUpdateCartoon)}</code>
+Article: <code>${format(this.nextUpdateArticle)}</code>
+News: <code>${format(this.nextUpdateNews)}</code>`;
     }
 }
+
+const model = new Model;
+export { model as Model };

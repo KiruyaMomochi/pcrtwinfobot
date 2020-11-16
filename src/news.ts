@@ -107,7 +107,7 @@ export class NewsRetriver {
 
         while (section.childNodes[0]?.nodeType == section.childNodes[0]?.TEXT_NODE
             && (section.childNodes[0] as HTMLObjectElement)?.data?.trim()?.length == 0) {
-                section.childNodes[0]?.remove();
+            section.childNodes[0]?.remove();
         }
         if (section.childNodes[0]?.nodeType == section.childNodes[0]?.TEXT_NODE && (section.childNodes[0] as HTMLObjectElement))
         {

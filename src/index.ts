@@ -8,11 +8,11 @@ import config from '../config';
 import { News, NewsRetriver } from './news';
 import { Cartoon } from '../typings/cartoon';
 import { Article } from '../typings/article';
-
+import { Model } from './model';
 
 const redive = new Redive(config.api);
 const telegraph = new Telegraph(config.telegraph.token);
-const news = new NewsRetriver();
+const newsRetriver = new NewsRetriver();
 
 export async function work(): Promise<void> {
     console.log('work()');
@@ -31,7 +31,7 @@ export async function work(): Promise<void> {
             pcrinfo.getNewArticlesAndPublish(redive),
             pcrinfo.getNewCartoonsAndPublish(redive)]);
 
-        await pcrinfo.getNewNewsAndPublish(news);
+        await pcrinfo.getNewNewsAndPublish(newsRetriver);
 
         await pcrinfo.sendStatus('Exiting service.');
     } catch (error) {
@@ -51,7 +51,12 @@ export async function workArticles(): Promise<Article[] | undefined> {
             bot, db, telegraph
         );
         await pcrinfo.sendStatus('workArticles()');
-        return await pcrinfo.getNewArticlesAndPublish(redive);
+        const arts = await pcrinfo.getNewArticlesAndPublish(redive);
+        
+        Model.lastUpdateArticle = new Date(Date.now());
+        updateStatus();
+
+        return arts;
     } catch (error) {
         console.log(error);
         bot.telegram.sendMessage(config.debug.channel,
@@ -69,7 +74,12 @@ export async function workCartoons(): Promise<Cartoon[] | undefined> {
             bot, db, telegraph
         );
         await pcrinfo.sendStatus('workCartoons()');
-        return await pcrinfo.getNewCartoonsAndPublish(redive);
+        const cartoon = await pcrinfo.getNewCartoonsAndPublish(redive);
+        
+        Model.lastUpdateCartoon = new Date(Date.now());
+        updateStatus();
+
+        return cartoon;
     } catch (error) {
         console.log(error);
         bot.telegram.sendMessage(config.debug.channel,
@@ -87,12 +97,37 @@ export async function workNews(): Promise<News[] | undefined> {
             bot, db, telegraph
         );
         await pcrinfo.sendStatus('workNews()');
-        return await pcrinfo.getNewNewsAndPublish(news);
+        const news = await pcrinfo.getNewNewsAndPublish(newsRetriver);
+        
+        Model.lastUpdateNews = new Date(Date.now());
+        updateStatus();
+
+        return news;
     } catch (error) {
         console.log(error);
         bot.telegram.sendMessage(config.debug.channel,
             `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
         );
+    }
+}
+
+let statusId: number | null;
+export async function updateStatus(): Promise<void> {
+    Model.nextUpdateArticle = await Schedule.NextAjax();
+    Model.nextUpdateCartoon = await Schedule.NextCartoon();
+    Model.nextUpdateNews = await Schedule.NextNews();
+
+    const chatId = config.debug.channel;
+    if (statusId) {
+        try {
+            await bot.telegram.editMessageText(chatId, statusId, undefined, Model.GetStatusString(), {parse_mode: 'HTML'});
+            return;
+        } catch (error) {
+            statusId = null;
+        }
+    } else {
+        const ctx = await bot.telegram.sendMessage(chatId, Model.GetStatusString(), {parse_mode: 'HTML'});
+        statusId = ctx.message_id;
     }
 }
 
@@ -112,6 +147,8 @@ export async function workNews(): Promise<News[] | undefined> {
     } catch (except) {
         console.log(except);
     }
+    
+    updateStatus();
 })();
 
 process.on('SIGINT', async () => {
