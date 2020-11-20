@@ -55,9 +55,9 @@ export class Schedule {
     }
 
     static async NextRunOf(jobName: string): Promise<Date> {
-        return (await this.agenda.jobs({name: jobName}, {'nextRunAt': 1}, 1))[0].attrs.nextRunAt;
+        return (await this.agenda.jobs({ name: jobName }, { 'nextRunAt': 1 }, 1))[0].attrs.nextRunAt;
     }
-    
+
     static async NextAjax(): Promise<Date> {
         return this.NextRunOf('check ajax announce');
     }

@@ -213,9 +213,13 @@ export class PCRInfo {
             process.stdout.write('announce: ');
             console.log(announce.title.title);
             if (findResult == null) {
-                const res = await this.db.collection('news').findOne(
-                    { 'title': announce.title.title }
-                ) as NewsItem | null;
+                const res = (await this.db.collection('news').find(
+                    { 'title': announce.title.title },
+                    {
+                        sort: {id: -1},
+                        limit: 1
+                    }
+                ).toArray())[0] as NewsItem | null;
                 process.stdout.write('dup news:');
                 console.log(res);
                 if (res && res.publishDate && dateDiffInDays(res.publishDate, new Date(announce.replace_time)) < 1) {
@@ -284,9 +288,13 @@ export class PCRInfo {
             process.stdout.write('news: ');
             console.log(news.title);
             if (findResult == null) {
-                const res = await this.db.collection('articles').findOne(
-                    { 'title.title': news.title }
-                ) as Announce | null;
+                const res = (await this.db.collection('articles').find(
+                    { 'title.title': news.title },
+                    {
+                        sort: {announce_id: -1},
+                        limit: 1
+                    }
+                ).toArray())[0] as Announce | null;
                 process.stdout.write('dup art:');
                 console.log(res);
                 res && news.publishDate && console.log(dateDiffInDays(new Date(res.replace_time * 1000), news.publishDate));
