@@ -61,7 +61,7 @@ export class Redive {
     }
 
     async getArticleById(id: number): Promise<Article> {
-        const response = await this.axios.get(Redive.info_detail + '/' + String(id));
+        const response = await this.axios.get(Redive.info_detail + '/' + String(id) + '/1/10/1');
 
         if (response.status != 200) {
             throw `${response.status}: ${response.statusText}`;
