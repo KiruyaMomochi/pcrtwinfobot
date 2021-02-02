@@ -48,7 +48,7 @@ export class Schedule {
                 news.repeatEvery(cron, { timezone: 'Asia/Taipei' }).save();
             }
         } catch (error) {
-            console.log(error);
+            console.log(`Error: ${error}`);
         }
 
         return this.agenda;

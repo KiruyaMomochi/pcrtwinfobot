@@ -35,7 +35,7 @@ export async function work(): Promise<void> {
 
         await pcrinfo.sendStatus('Exiting service.');
     } catch (error) {
-        console.log(error);
+        console.log(`Error in work(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
             `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
         );
@@ -58,7 +58,7 @@ export async function workArticles(): Promise<Article[] | undefined> {
 
         return arts;
     } catch (error) {
-        console.log(error);
+        console.log(`Error in workArticles(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
             `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
         );
@@ -81,7 +81,7 @@ export async function workCartoons(): Promise<Cartoon[] | undefined> {
 
         return cartoon;
     } catch (error) {
-        console.log(error);
+        console.log(`Error in workCartoons(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
             `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
         );
@@ -104,7 +104,7 @@ export async function workNews(): Promise<News[] | undefined> {
 
         return news;
     } catch (error) {
-        console.log(error);
+        console.log(`Error in workNews(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
             `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
         );
@@ -145,7 +145,7 @@ export async function updateStatus(): Promise<void> {
         await Schedule.agenda.start();
         await Schedule.defineAgenda();
     } catch (except) {
-        console.log(except);
+        console.log(`Exception: ${except}`);
     }
     
     updateStatus();

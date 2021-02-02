@@ -297,7 +297,7 @@ export class PCRInfo {
                 ).toArray())[0] as Announce | null;
                 process.stdout.write('dup art:');
                 console.log(res);
-                res && news.publishDate && console.log(dateDiffInDays(new Date(res.replace_time * 1000), news.publishDate));
+                res && news.publishDate && console.log(`Date diff: ${dateDiffInDays(new Date(res.replace_time * 1000), news.publishDate)}`);
                 if (res && news.publishDate && dateDiffInDays(new Date(res.replace_time * 1000), news.publishDate) < 1) {
                     findArticle = res;
                 }
