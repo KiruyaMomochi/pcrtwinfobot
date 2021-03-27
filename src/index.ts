@@ -37,7 +37,7 @@ export async function work(): Promise<void> {
     } catch (error) {
         console.log(`Error in work(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
-            `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
+            `<b>Exception</b>\n<code>${error}</code>`, { parse_mode: 'HTML' }
         );
     }
 }
@@ -60,7 +60,7 @@ export async function workArticles(): Promise<Article[] | undefined> {
     } catch (error) {
         console.log(`Error in workArticles(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
-            `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
+            `<b>Exception</b>\n<code>${error}</code>`, { parse_mode: 'HTML' }
         );
     }
 }
@@ -83,7 +83,7 @@ export async function workCartoons(): Promise<Cartoon[] | undefined> {
     } catch (error) {
         console.log(`Error in workCartoons(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
-            `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
+            `<b>Exception</b>\n<code>${error}</code>`, { parse_mode: 'HTML' }
         );
     }
 }
@@ -106,7 +106,7 @@ export async function workNews(): Promise<News[] | undefined> {
     } catch (error) {
         console.log(`Error in workNews(): ${error}`);
         bot.telegram.sendMessage(config.debug.channel,
-            `<b>Exception</b><br><code>${error}</code>`, { parse_mode: 'HTML' }
+            `<b>Exception</b>\n<code>${error}</code>`, { parse_mode: 'HTML' }
         );
     }
 }
@@ -136,8 +136,12 @@ export async function updateStatus(): Promise<void> {
     await Connection.connectToMongo();
     await ensureIndex();
     setBotCommand(bot);
-    await bot.telegram.setWebhook('https://www.nekopara.xyz/djioajdsioa');
-    bot.startWebhook('/djioajdsioa', null, 5000);
+
+    const webhook = config.bot.webhook;
+    if (webhook?.server && webhook?.path) {
+        await bot.telegram.setWebhook(`${webhook.server}${webhook.path}`);
+        bot.startWebhook(webhook.path, null, 5000);
+    }
     await bot.launch();
 
     Schedule.agenda.mongo((await Connection.connectToMongo()).db('agenda'));
