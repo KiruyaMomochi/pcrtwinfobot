@@ -228,7 +228,7 @@ async function setKeyboards(keyboard: InlineKeyboardButton[][], votes: Collectio
     const message = extra.message;
     for (const keys of keyboard) {
         const promises = keys.map(async (key) => {
-            const data = key.callback_data;
+            const data = key.text;
             if (data == undefined) {
                 return;
             }
@@ -239,7 +239,7 @@ async function setKeyboards(keyboard: InlineKeyboardButton[][], votes: Collectio
                 inline_message_id: extra.inline_message_id,
                 data: data
             });
-            key.text = key.callback_data + ' ' + String(num);
+            key.text = key.text + ' ' + String(num);
         });
         await Promise.allSettled(promises);
     }
