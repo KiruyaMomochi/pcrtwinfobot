@@ -9,7 +9,7 @@ import { ChatID, CartoonConfig, ArticleConfig, NewsConfig } from '../typings/con
 import { PCRContext } from '../typings/bot';
 import { Article, Tag, Announce } from '../typings/article';
 import { Cartoon as Cartoon } from '../typings/cartoon';
-import { ExtraEditMessage, Message } from 'telegraf/typings/telegram-types';
+import { ExtraEditMessage, ExtraSendMessage, Message } from 'telegraf/typings/telegram-types';
 import { News, NewsItem, NewsRetriver } from './news';
 
 function toTagString(tag?: Tag | string, extendTag?: string[]): string {
@@ -103,7 +103,7 @@ export class PCRInfo {
         newsapi: NewsRetriver,
         item: NewsItem,
         channel: ChatID,
-        extra?: ExtraEditMessage
+        extra?: ExtraSendMessage
     ): Promise<News> {
         const news = await newsapi.getNews(item);
         const page = await this.telegraph.uploadElement(news.title, news.content);
@@ -192,7 +192,7 @@ export class PCRInfo {
         for (const news of newnews) {
             // Silent if 外掛停權
             const ret = await this.publishNews(newsapi, news, channel,{
-                disable_notification: news.title.indexOf('外掛停權') !== -1
+                disable_notification: news.title.indexOf('外掛停權') !== -1,
             });
             await collection.insertOne(news);
             rets.push(ret);
