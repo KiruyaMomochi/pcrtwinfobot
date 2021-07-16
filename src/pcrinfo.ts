@@ -9,7 +9,7 @@ import { ChatID, CartoonConfig, ArticleConfig, NewsConfig } from '../typings/con
 import { PCRContext } from '../typings/bot';
 import { Article, Tag, Announce } from '../typings/article';
 import { Cartoon as Cartoon } from '../typings/cartoon';
-import { Message } from 'telegraf/typings/telegram-types';
+import { ExtraEditMessage, Message } from 'telegraf/typings/telegram-types';
 import { News, NewsItem, NewsRetriver } from './news';
 
 function toTagString(tag?: Tag | string, extendTag?: string[]): string {
@@ -50,7 +50,8 @@ export class PCRInfo {
     async publishArticle(
         api: Redive,
         id: number,
-        channel: ChatID
+        channel: ChatID,
+        extra?: ExtraEditMessage
     ): Promise<Article> {
         const article = await api.getArticleById(id);
         const page = await this.telegraph.uploadChildren(article.title, article.content);
@@ -61,7 +62,8 @@ export class PCRInfo {
         await this.bot.telegram.sendMessage(channel,
             `${taginfo}<b>${article.title.replace(/^【(.+)】/, '')}</b>\n${page.url}\n${datestr}\t<code>#${id}</code>`,
             {
-                parse_mode: 'HTML'
+                parse_mode: 'HTML',
+                ...extra
             });
 
         // return the article
@@ -100,7 +102,8 @@ export class PCRInfo {
     async publishNews(
         newsapi: NewsRetriver,
         item: NewsItem,
-        channel: ChatID
+        channel: ChatID,
+        extra?: ExtraEditMessage
     ): Promise<News> {
         const news = await newsapi.getNews(item);
         const page = await this.telegraph.uploadElement(news.title, news.content);
@@ -111,7 +114,8 @@ export class PCRInfo {
         await this.bot.telegram.sendMessage(channel,
             `${taginfo}<b>${news.title.replace(/^【(.+)】/, '')}</b>\n${page.url}\n${datestr}\t<code>News#${item.id}</code>`,
             {
-                parse_mode: 'HTML'
+                parse_mode: 'HTML',
+                ...extra
             });
 
         // return the article
@@ -186,7 +190,10 @@ export class PCRInfo {
         const rets: News[] = [];
 
         for (const news of newnews) {
-            const ret = await this.publishNews(newsapi, news, channel);
+            // Silent if 外掛停權
+            const ret = await this.publishNews(newsapi, news, channel,{
+                disable_notification: news.title.indexOf('外掛停權') !== -1
+            });
             await collection.insertOne(news);
             rets.push(ret);
             await sleep(delay);
@@ -202,6 +209,7 @@ export class PCRInfo {
         const collection = this.db.collection('articles');
 
         for await (const announce of api.makeAnnounceIterator()) {
+            announce.title.title = announce.title.title.trim();
             const findResult = await collection.findOne({
                 announce_id: announce.announce_id,
                 replace_time: announce.replace_time
@@ -276,6 +284,7 @@ export class PCRInfo {
         const collection = this.db.collection('news');
 
         for await (const news of newsapi.makeNewsItemIterator()) {
+            news.title = news.title.trim();
             const findResult = await collection.findOne({
                 id: news.id,
                 title: news.title,
